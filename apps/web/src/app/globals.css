@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f4efe4;
+  --foreground: #1f2937;
+  --card: rgba(255, 255, 255, 0.76);
+  --muted: #6b7280;
+  --line: rgba(31, 41, 55, 0.12);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --font-sans: var(--font-space-grotesk);
+  --font-mono: var(--font-ibm-plex-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-space-grotesk), sans-serif;
+  background-image:
+    radial-gradient(circle at top left, rgba(15, 118, 110, 0.18), transparent 32%),
+    radial-gradient(circle at top right, rgba(251, 146, 60, 0.2), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(244, 239, 228, 0.98));
+}
+
+a:where(:not([class])) {
+  color: inherit;
+}
+
+:where(a, button, input, textarea, select):focus-visible {
+  outline: 2px solid rgba(15, 118, 110, 0.55);
+  outline-offset: 3px;
+}
+
+button:not(:disabled) {
+  cursor: pointer;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}
+
+::selection {
+  background: rgba(15, 118, 110, 0.24);
+}

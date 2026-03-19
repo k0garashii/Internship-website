@@ -1,0 +1,471 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+  PENDING_DELETION
+}
+
+enum ExperienceLevel {
+  INTERN
+  ENTRY_LEVEL
+  JUNIOR
+  MID
+  SENIOR
+  LEAD
+}
+
+enum WorkMode {
+  REMOTE
+  HYBRID
+  ONSITE
+  FLEXIBLE
+}
+
+enum EmploymentType {
+  INTERNSHIP
+  APPRENTICESHIP
+  FULL_TIME
+  PART_TIME
+  TEMPORARY
+  FREELANCE
+}
+
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum DomainSource {
+  MANUAL
+  GEMINI
+  IMPORTED
+}
+
+enum TargetSource {
+  MANUAL
+  GEMINI
+  IMPORTED
+}
+
+enum SearchRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  PARTIAL
+  FAILED
+  CANCELED
+}
+
+enum OfferSourceKind {
+  COMPANY_CAREERS
+  JOB_BOARD
+  AGENCY
+  REFERRAL
+  OTHER
+}
+
+enum OfferLifecycleStatus {
+  DISCOVERED
+  NORMALIZED
+  SCORED
+  SHORTLISTED
+  APPLIED
+  ARCHIVED
+}
+
+enum FeedbackDecision {
+  NOT_RELEVANT
+  MAYBE
+  FAVORITE
+  APPLIED
+  INTERVIEWING
+  REJECTED
+  OFFER_ACCEPTED
+}
+
+enum DraftStatus {
+  DRAFT
+  READY_FOR_REVIEW
+  APPROVED
+  SENT
+  ARCHIVED
+}
+
+enum EmailIngestionSourceType {
+  FORWARDING
+  GMAIL
+  OUTLOOK
+}
+
+enum EmailIngestionConnectionStatus {
+  ACTIVE
+  DISABLED
+  ERROR
+}
+
+enum InboundEmailStatus {
+  RECEIVED
+  PARSED
+  IGNORED
+  FAILED
+}
+
+enum InboundEmailSignal {
+  UNKNOWN
+  JOB_ALERT
+  CAREER_SITE_DIGEST
+  RECRUITER_OUTREACH
+  SCHOOL_CAREER_DIGEST
+  APPLICATION_UPDATE
+}
+
+model User {
+  id               String                     @id @default(cuid())
+  email            String                     @unique
+  passwordHash     String?
+  fullName         String?
+  locale           String                     @default("fr-FR")
+  timezone         String                     @default("Europe/Paris")
+  status           UserStatus                 @default(ACTIVE)
+  emailVerifiedAt  DateTime?
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+  accounts         AuthAccount[]
+  companyWatchlist CompanyWatchlistItem[]
+  drafts           EmailDraft[]
+  emailConnections EmailIngestionConnection[]
+  feedbackEntries  OfferFeedback[]
+  inboundEmails    InboundEmail[]
+  jobOffers        JobOffer[]
+  profile          UserProfile?
+  searchDomains    SearchDomain[]
+  searchLocations  SearchLocation[]
+  searchRuns       SearchRun[]
+  searchTargets    SearchTarget[]
+  sessions         AuthSession[]
+
+  @@index([status])
+}
+
+model AuthAccount {
+  id                String    @id @default(cuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  accountType       String    @default("oauth")
+  refreshToken      String?
+  accessToken       String?
+  expiresAt         DateTime?
+  tokenType         String?
+  scope             String?
+  idToken           String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model AuthSession {
+  id           String   @id @default(cuid())
+  userId       String
+  sessionToken String   @unique
+  expiresAt    DateTime
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expiresAt  DateTime
+
+  @@unique([identifier, token])
+}
+
+model UserProfile {
+  id                   String           @id @default(cuid())
+  userId               String           @unique
+  headline             String?
+  summary              String?
+  school               String?
+  degree               String?
+  graduationYear       Int?
+  city                 String?
+  countryCode          String?
+  remotePreference     WorkMode?
+  experienceLevel      ExperienceLevel?
+  availabilityDate     DateTime?
+  linkedinUrl          String?
+  githubUrl            String?
+  portfolioUrl         String?
+  resumeUrl            String?
+  visaNeedsSponsorship Boolean          @default(false)
+  salaryExpectationMin Int?
+  salaryExpectationMax Int?
+  constraints          Json?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  skills               ProfileSkill[]
+  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ProfileSkill {
+  id              String      @id @default(cuid())
+  profileId       String
+  name            String
+  normalizedName  String
+  level           SkillLevel?
+  yearsExperience Int?
+  isHighlighted   Boolean     @default(false)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  profile         UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, normalizedName])
+  @@index([profileId])
+}
+
+model CompanyWatchlistItem {
+  id             String   @id @default(cuid())
+  userId         String
+  companyName    String
+  normalizedName String
+  websiteUrl     String?
+  careerPageUrl  String?
+  notes          String?
+  priority       Int      @default(50)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, normalizedName])
+  @@index([userId, priority])
+}
+
+model SearchDomain {
+  id              String       @id @default(cuid())
+  userId          String
+  label           String
+  normalizedLabel String
+  source          DomainSource @default(MANUAL)
+  rationale       String?
+  isValidated     Boolean      @default(false)
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, normalizedLabel])
+  @@index([userId, isValidated])
+}
+
+model SearchTarget {
+  id              String           @id @default(cuid())
+  userId          String
+  title           String
+  normalizedTitle String
+  source          TargetSource     @default(MANUAL)
+  experienceLevel ExperienceLevel?
+  contractTypes   EmploymentType[]
+  notes           String?
+  priority        Int              @default(50)
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, normalizedTitle])
+  @@index([userId, priority])
+}
+
+model SearchLocation {
+  id              String   @id @default(cuid())
+  userId          String
+  label           String
+  normalizedLabel String
+  countryCode     String?
+  region          String?
+  isRemote        Boolean  @default(false)
+  isHybrid        Boolean  @default(false)
+  priority        Int      @default(50)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, normalizedLabel])
+  @@index([userId, priority])
+}
+
+model SearchRun {
+  id              String           @id @default(cuid())
+  userId          String
+  label           String
+  queryText       String?
+  status          SearchRunStatus  @default(PENDING)
+  filtersSnapshot Json?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  resultCount     Int              @default(0)
+  errorMessage    String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  searchMatches   SearchRunOffer[]
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+}
+
+model JobOffer {
+  id              String               @id @default(cuid())
+  userId          String
+  sourceKind      OfferSourceKind
+  sourceSite      String
+  sourceUrl       String
+  externalId      String?
+  fingerprint     String
+  companyName     String
+  companyWebsite  String?
+  title           String
+  locationLabel   String?
+  countryCode     String?
+  employmentType  EmploymentType?
+  workMode        WorkMode?
+  experienceLevel ExperienceLevel?
+  salaryMin       Int?
+  salaryMax       Int?
+  currency        String?
+  description     String?
+  rawPayload      Json?
+  status          OfferLifecycleStatus @default(DISCOVERED)
+  postedAt        DateTime?
+  firstSeenAt     DateTime             @default(now())
+  lastSeenAt      DateTime             @default(now())
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  drafts          EmailDraft[]
+  feedbackEntries OfferFeedback[]
+  searchMatches   SearchRunOffer[]
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, fingerprint])
+  @@index([userId, status])
+  @@index([userId, postedAt])
+}
+
+model SearchRunOffer {
+  id               String    @id @default(cuid())
+  searchRunId      String
+  jobOfferId       String
+  discoveredAt     DateTime  @default(now())
+  rank             Int?
+  rawScore         Float?
+  normalizedScore  Float?
+  matchExplanation String?
+  isShortlisted    Boolean   @default(false)
+  jobOffer         JobOffer  @relation(fields: [jobOfferId], references: [id], onDelete: Cascade)
+  searchRun        SearchRun @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
+
+  @@unique([searchRunId, jobOfferId])
+  @@index([jobOfferId])
+}
+
+model OfferFeedback {
+  id         String           @id @default(cuid())
+  userId     String
+  jobOfferId String
+  decision   FeedbackDecision
+  note       String?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  jobOffer   JobOffer         @relation(fields: [jobOfferId], references: [id], onDelete: Cascade)
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([jobOfferId, decision])
+}
+
+model EmailDraft {
+  id                     String      @id @default(cuid())
+  userId                 String
+  jobOfferId             String?
+  status                 DraftStatus @default(DRAFT)
+  subject                String?
+  body                   String
+  personalizationSummary String?
+  generatedBy            String?
+  contextSnapshot        Json?
+  approvedAt             DateTime?
+  sentAt                 DateTime?
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+  jobOffer               JobOffer?   @relation(fields: [jobOfferId], references: [id], onDelete: SetNull)
+  user                   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([jobOfferId])
+}
+
+model EmailIngestionConnection {
+  id                  String                         @id @default(cuid())
+  userId              String
+  sourceType          EmailIngestionSourceType
+  label               String
+  status              EmailIngestionConnectionStatus @default(ACTIVE)
+  forwardingLocalPart String?
+  forwardingAddress   String?
+  webhookSecretHash   String?
+  lastIngestedAt      DateTime?
+  createdAt           DateTime                       @default(now())
+  updatedAt           DateTime                       @updatedAt
+  inboundEmails       InboundEmail[]
+  user                User                           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sourceType])
+  @@unique([forwardingLocalPart])
+  @@index([userId, status])
+}
+
+model InboundEmail {
+  id                String                   @id @default(cuid())
+  userId            String
+  connectionId      String
+  externalMessageId String?
+  fromEmail         String?
+  fromName          String?
+  toEmail           String?
+  subject           String?
+  bodyPreview       String?
+  snippet           String?
+  canonicalUrl      String?
+  signal            InboundEmailSignal       @default(UNKNOWN)
+  processingStatus  InboundEmailStatus       @default(RECEIVED)
+  receivedAt        DateTime
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  connection        EmailIngestionConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  user              User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, externalMessageId])
+  @@index([userId, receivedAt])
+  @@index([connectionId, processingStatus])
+}
