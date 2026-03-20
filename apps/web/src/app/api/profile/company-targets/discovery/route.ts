@@ -5,6 +5,7 @@ import {
   companyTargetDiscoveryRequestSchema,
   discoverCareerSourcesForTargets,
 } from "@/lib/company-targets/discovery";
+import { logRouteError } from "@/lib/observability/error-logging";
 
 export const runtime = "nodejs";
 
@@ -26,7 +27,16 @@ async function handleCompanyTargetDiscovery(request: Request) {
 
   try {
     payload = await request.json();
-  } catch {
+  } catch (error) {
+    logRouteError({
+      level: "warn",
+      route: "/api/profile/company-targets/discovery",
+      request,
+      message: "Invalid JSON payload received during company target discovery",
+      error,
+      status: 400,
+    });
+
     return NextResponse.json(
       {
         error: "Invalid JSON payload",
@@ -57,7 +67,15 @@ async function handleCompanyTargetDiscovery(request: Request) {
     return NextResponse.json(result, {
       status: 200,
     });
-  } catch {
+  } catch (error) {
+    logRouteError({
+      route: "/api/profile/company-targets/discovery",
+      request,
+      message: "Company target discovery failed with an unexpected error",
+      error,
+      status: 500,
+    });
+
     return NextResponse.json(
       {
         error: "Unable to discover career sources for the provided targets",

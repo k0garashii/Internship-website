@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getCurrentViewer } from "@/lib/auth/session";
 import { UserConfigError, exportUserConfig } from "@/lib/config/user-config";
+import { logRouteError } from "@/lib/observability/error-logging";
 import {
   SearchDiscoveryError,
   discoverInitialOffers,
@@ -32,6 +33,14 @@ async function handleSearchDiscovery() {
     });
   } catch (error) {
     if (error instanceof UserConfigError || error instanceof SearchDiscoveryError) {
+      logRouteError({
+        level: error.status >= 500 ? "error" : "warn",
+        route: "/api/search/discovery",
+        message: "Search discovery failed with a handled domain error",
+        error,
+        status: error.status,
+      });
+
       return NextResponse.json(
         {
           error: error.message,
@@ -41,6 +50,13 @@ async function handleSearchDiscovery() {
         },
       );
     }
+
+    logRouteError({
+      route: "/api/search/discovery",
+      message: "Search discovery failed with an unexpected error",
+      error,
+      status: 500,
+    });
 
     return NextResponse.json(
       {

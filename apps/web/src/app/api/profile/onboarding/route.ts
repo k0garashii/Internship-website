@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentViewer } from "@/lib/auth/session";
+import { logRouteError } from "@/lib/observability/error-logging";
 import {
   ProfileOnboardingError,
   saveProfileOnboarding,
@@ -26,7 +27,16 @@ export async function POST(request: Request) {
 
   try {
     payload = await request.json();
-  } catch {
+  } catch (error) {
+    logRouteError({
+      level: "warn",
+      route: "/api/profile/onboarding",
+      request,
+      message: "Invalid JSON payload received during onboarding save",
+      error,
+      status: 400,
+    });
+
     return NextResponse.json(
       {
         error: "Invalid JSON payload",
@@ -51,6 +61,15 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     if (error instanceof ProfileOnboardingError) {
+      logRouteError({
+        level: error.status >= 500 ? "error" : "warn",
+        route: "/api/profile/onboarding",
+        request,
+        message: "Onboarding save failed with a handled domain error",
+        error,
+        status: error.status,
+      });
+
       return NextResponse.json(
         {
           error: error.message,
@@ -61,6 +80,14 @@ export async function POST(request: Request) {
         },
       );
     }
+
+    logRouteError({
+      route: "/api/profile/onboarding",
+      request,
+      message: "Onboarding save failed with an unexpected error",
+      error,
+      status: 500,
+    });
 
     return NextResponse.json(
       {

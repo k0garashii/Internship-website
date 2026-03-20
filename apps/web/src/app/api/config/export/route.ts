@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getCurrentViewer } from "@/lib/auth/session";
 import { UserConfigError, exportUserConfig } from "@/lib/config/user-config";
+import { logRouteError } from "@/lib/observability/error-logging";
 
 export const runtime = "nodejs";
 
@@ -27,6 +28,14 @@ export async function GET() {
     });
   } catch (error) {
     if (error instanceof UserConfigError) {
+      logRouteError({
+        level: error.status >= 500 ? "error" : "warn",
+        route: "/api/config/export",
+        message: "Configuration export failed with a handled domain error",
+        error,
+        status: error.status,
+      });
+
       return NextResponse.json(
         {
           error: error.message,
@@ -37,6 +46,13 @@ export async function GET() {
         },
       );
     }
+
+    logRouteError({
+      route: "/api/config/export",
+      message: "Configuration export failed with an unexpected error",
+      error,
+      status: 500,
+    });
 
     return NextResponse.json(
       {

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getCurrentViewer } from "@/lib/auth/session";
 import { exportUserConfig } from "@/lib/config/user-config";
 import { generateDomainBootstrap } from "@/lib/domains/bootstrap";
+import { logRouteError } from "@/lib/observability/error-logging";
 
 export const runtime = "nodejs";
 
@@ -40,7 +41,14 @@ export async function POST() {
         status: 200,
       },
     );
-  } catch {
+  } catch (error) {
+    logRouteError({
+      route: "/api/profile/domain-bootstrap",
+      message: "Domain bootstrap generation failed with an unexpected error",
+      error,
+      status: 500,
+    });
+
     return NextResponse.json(
       {
         error: "Unable to generate a first domain base",

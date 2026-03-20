@@ -4,6 +4,7 @@ import {
   companyTargetSuggestionItemSchema,
   type CompanyTargetSuggestionItem,
 } from "@/lib/company-targets/suggestions";
+import { logServiceError } from "@/lib/observability/error-logging";
 
 const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -364,7 +365,17 @@ export async function discoverCareerSourcesForTargets(
           checkedUrls,
           notes: "Aucun point d entree carriere explicite detecte automatiquement.",
         });
-      } catch {
+      } catch (error) {
+        logServiceError({
+          scope: "company-targets/discovery",
+          message: "Career source discovery failed for a target and returned an error fallback",
+          error,
+          metadata: {
+            companyName: target.companyName,
+            checkedUrls,
+          },
+        });
+
         return createFallbackResult(target, {
           status: "error",
           checkedUrls,

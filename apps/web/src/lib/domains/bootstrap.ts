@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type { PersonalProfileFile } from "@/lib/config/personal-profile";
 import type { SearchTargetsFile } from "@/lib/config/search-targets";
+import { logServiceError } from "@/lib/observability/error-logging";
 import { normalizeListItem } from "@/lib/profile/schema";
 
 const domainBootstrapSchema = z.object({
@@ -265,8 +266,13 @@ export async function generateDomainBootstrap(
         ...geminiResult,
         provider: "gemini",
       };
-    } catch {
-      // Fall through to a deterministic bootstrap if the external call fails.
+    } catch (error) {
+      logServiceError({
+        level: "warn",
+        scope: "domains/bootstrap",
+        message: "Gemini domain bootstrap failed, deterministic fallback used instead",
+        error,
+      });
     }
   }
 

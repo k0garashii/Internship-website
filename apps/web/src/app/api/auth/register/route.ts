@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { RegisterUserError, registerUser } from "@/lib/auth/register";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
+import { logRouteError } from "@/lib/observability/error-logging";
 import {
   buildSessionCookieOptions,
   extractSessionContext,
@@ -14,7 +15,16 @@ export async function POST(request: Request) {
 
   try {
     payload = await request.json();
-  } catch {
+  } catch (error) {
+    logRouteError({
+      level: "warn",
+      route: "/api/auth/register",
+      request,
+      message: "Invalid JSON payload received during registration",
+      error,
+      status: 400,
+    });
+
     return NextResponse.json(
       {
         error: "Invalid JSON payload",
@@ -46,6 +56,15 @@ export async function POST(request: Request) {
     return response;
   } catch (error) {
     if (error instanceof RegisterUserError) {
+      logRouteError({
+        level: error.status >= 500 ? "error" : "warn",
+        route: "/api/auth/register",
+        request,
+        message: "Registration failed with a handled domain error",
+        error,
+        status: error.status,
+      });
+
       return NextResponse.json(
         {
           error: error.message,
@@ -56,6 +75,14 @@ export async function POST(request: Request) {
         },
       );
     }
+
+    logRouteError({
+      route: "/api/auth/register",
+      request,
+      message: "Registration failed with an unexpected error",
+      error,
+      status: 500,
+    });
 
     return NextResponse.json(
       {

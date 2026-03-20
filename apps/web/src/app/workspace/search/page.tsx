@@ -1,5 +1,6 @@
 import { getCurrentViewer } from "@/lib/auth/session";
 import { UserConfigError, exportUserConfig } from "@/lib/config/user-config";
+import { logServiceError } from "@/lib/observability/error-logging";
 import { buildSearchQueryPlan, type SearchQueryPlan } from "@/lib/search/query-plan";
 import { CompanyTargetsPanel } from "./_components/company-targets-panel";
 import { SearchDiscoveryPanel } from "./_components/search-discovery-panel";
@@ -221,8 +222,27 @@ export default async function SearchPage() {
     plan = buildSearchQueryPlan(config.personalProfile, config.searchTargets);
   } catch (error) {
     if (error instanceof UserConfigError) {
+      logServiceError({
+        level: error.status >= 500 ? "error" : "warn",
+        scope: "workspace/search/page",
+        message: "Search page failed to load a handled configuration error",
+        error,
+        metadata: {
+          userId: viewer.userId,
+        },
+      });
+
       configurationError = error.message;
     } else {
+      logServiceError({
+        scope: "workspace/search/page",
+        message: "Search page failed with an unexpected error while building the plan",
+        error,
+        metadata: {
+          userId: viewer.userId,
+        },
+      });
+
       configurationError = "Impossible de preparer la recherche initiale";
     }
   }

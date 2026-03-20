@@ -6,6 +6,7 @@ import {
 } from "@/lib/config/company-watchlist";
 import type { PersonalProfileFile } from "@/lib/config/personal-profile";
 import type { SearchTargetsFile } from "@/lib/config/search-targets";
+import { logServiceError } from "@/lib/observability/error-logging";
 import { normalizeListItem } from "@/lib/profile/schema";
 
 const optionalUrlSchema = z
@@ -554,8 +555,13 @@ export async function generateCompanyTargetSuggestions(
         provider: "gemini",
       };
     }
-  } catch {
-    // Fall back to deterministic matching when Gemini is unavailable or returns invalid output.
+  } catch (error) {
+    logServiceError({
+      level: "warn",
+      scope: "company-targets/suggestions",
+      message: "Gemini company target generation failed, deterministic fallback used instead",
+      error,
+    });
   }
 
   return {

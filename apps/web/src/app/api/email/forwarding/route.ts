@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentViewer } from "@/lib/auth/session";
+import { logRouteError } from "@/lib/observability/error-logging";
 import {
   forwardingProvisionRequestSchema,
   getForwardingSourceSnapshot,
@@ -23,9 +24,27 @@ export async function GET() {
     );
   }
 
-  return NextResponse.json(await getForwardingSourceSnapshot(viewer), {
-    status: 200,
-  });
+  try {
+    return NextResponse.json(await getForwardingSourceSnapshot(viewer), {
+      status: 200,
+    });
+  } catch (error) {
+    logRouteError({
+      route: "/api/email/forwarding",
+      message: "Forwarding snapshot retrieval failed with an unexpected error",
+      error,
+      status: 500,
+    });
+
+    return NextResponse.json(
+      {
+        error: "Unable to load forwarding source",
+      },
+      {
+        status: 500,
+      },
+    );
+  }
 }
 
 export async function POST(request: Request) {
@@ -46,7 +65,16 @@ export async function POST(request: Request) {
 
   try {
     payload = await request.json();
-  } catch {}
+  } catch (error) {
+    logRouteError({
+      level: "warn",
+      route: "/api/email/forwarding",
+      request,
+      message: "Invalid JSON payload received during forwarding provisioning",
+      error,
+      status: 400,
+    });
+  }
 
   const parsed = forwardingProvisionRequestSchema.safeParse(payload);
 
@@ -62,7 +90,26 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json(await provisionForwardingSource(viewer), {
-    status: 200,
-  });
+  try {
+    return NextResponse.json(await provisionForwardingSource(viewer), {
+      status: 200,
+    });
+  } catch (error) {
+    logRouteError({
+      route: "/api/email/forwarding",
+      request,
+      message: "Forwarding provisioning failed with an unexpected error",
+      error,
+      status: 500,
+    });
+
+    return NextResponse.json(
+      {
+        error: "Unable to provision forwarding source",
+      },
+      {
+        status: 500,
+      },
+    );
+  }
 }
