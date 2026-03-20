@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
-import { logRouteError } from "@/lib/observability/error-logging";
+import { logRouteError, logRouteEvent } from "@/lib/observability/error-logging";
 import { SignInUserError, signInUser } from "@/lib/auth/sign-in";
 import {
   buildSessionCookieOptions,
@@ -54,6 +54,17 @@ export async function POST(request: Request) {
       result.session.token,
       buildSessionCookieOptions(result.session.expiresAt),
     );
+
+    logRouteEvent({
+      route: "/api/auth/sign-in",
+      request,
+      message: "Sign-in completed",
+      status: 200,
+      metadata: {
+        userId: result.user.id,
+        email: result.user.email,
+      },
+    });
 
     return response;
   } catch (error) {

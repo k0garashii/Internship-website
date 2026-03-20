@@ -1,5 +1,6 @@
 import type { PersonalProfileFile } from "@/lib/config/personal-profile";
 import type { SearchTargetsFile } from "@/lib/config/search-targets";
+import { matchProfileToOffer } from "@/lib/search/matching";
 import { normalizeDiscoveryOffers } from "@/lib/search/normalization";
 import {
   buildWttjSearchContext,
@@ -10,6 +11,7 @@ import {
 } from "@/lib/search/providers/wttj";
 import { buildSearchQueryPlan } from "@/lib/search/query-plan";
 import type { SearchQueryCandidate } from "@/lib/search/query-plan";
+import { scoreDiscoveryOffer } from "@/lib/search/scoring";
 import type {
   SearchDiscoveryOffer,
   SearchDiscoveryQueryExecution,
@@ -45,55 +47,6 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-function buildOfferScore(offer: Pick<SearchDiscoveryOffer, "contractType" | "matchedKeywords" | "matchedQueryIds" | "profileSnippet" | "publishedAt" | "summary">) {
-  let score = 36;
-
-  score += Math.min(offer.matchedQueryIds.length * 18, 36);
-  score += Math.min(offer.matchedKeywords.length * 7, 28);
-
-  if (offer.contractType === "internship" || offer.contractType === "apprenticeship") {
-    score += 10;
-  }
-
-  if (offer.profileSnippet) {
-    score += 6;
-  }
-
-  if (offer.summary) {
-    score += 4;
-  }
-
-  if (offer.publishedAt) {
-    const ageInDays = (Date.now() - Date.parse(offer.publishedAt)) / (1000 * 60 * 60 * 24);
-
-    if (ageInDays <= 7) {
-      score += 10;
-    } else if (ageInDays <= 21) {
-      score += 6;
-    } else if (ageInDays <= 45) {
-      score += 3;
-    }
-  }
-
-  return clamp(Math.round(score), 35, 98);
-}
-
-function buildOfferScoreLabel(score: number): SearchDiscoveryOffer["relevanceLabel"] {
-  if (score >= 85) {
-    return "Tres forte";
-  }
-
-  if (score >= 72) {
-    return "Forte";
-  }
-
-  if (score >= 58) {
-    return "Intermediaire";
-  }
-
-  return "Exploratoire";
-}
-
 function mergeOffer(
   current: SearchDiscoveryOffer | undefined,
   incoming: SearchDiscoveryOffer,
@@ -111,12 +64,26 @@ function mergeOffer(
       new Set([...current.matchedQueryLabels, ...incoming.matchedQueryLabels]),
     ),
     matchedKeywords: Array.from(new Set([...current.matchedKeywords, ...incoming.matchedKeywords])),
+    priorityScore: Math.max(current.priorityScore, incoming.priorityScore),
     relevanceScore: current.relevanceScore,
     relevanceLabel: current.relevanceLabel,
+    matching: current.matching,
   };
 }
 
 function compareOffers(left: SearchDiscoveryOffer, right: SearchDiscoveryOffer) {
+  const matchingDelta = right.matching.score - left.matching.score;
+
+  if (matchingDelta !== 0) {
+    return matchingDelta;
+  }
+
+  const priorityDelta = right.priorityScore - left.priorityScore;
+
+  if (priorityDelta !== 0) {
+    return priorityDelta;
+  }
+
   const scoreDelta = right.relevanceScore - left.relevanceScore;
 
   if (scoreDelta !== 0) {
@@ -143,7 +110,7 @@ function createDiscoveryOffer(
     publishedAt: hit.published_at,
     summary: hit.summary,
   };
-  const relevanceScore = buildOfferScore(seedOffer);
+  const scoring = scoreDiscoveryOffer(seedOffer);
 
   return {
     id: `wttj:${hit.reference ?? hit.objectID}`,
@@ -164,8 +131,15 @@ function createDiscoveryOffer(
     matchedQueryIds: [query.id],
     matchedQueryLabels: [query.label],
     matchedKeywords: seedOffer.matchedKeywords,
-    relevanceScore,
-    relevanceLabel: buildOfferScoreLabel(relevanceScore),
+    priorityScore: query.priority,
+    relevanceScore: scoring.score,
+    relevanceLabel: scoring.label,
+    matching: {
+      score: 18,
+      label: "Exploratoire",
+      summary: "Match non calcule.",
+      breakdown: [],
+    },
   };
 }
 
@@ -275,25 +249,27 @@ export async function discoverInitialOffers(
     );
   }
 
-  const offers = Array.from(offerMap.values()).sort(compareOffers).slice(0, maxOffers);
-  const scoredOffers = offers.map((offer) => {
-    const relevanceScore = buildOfferScore(offer);
+  const scoredOffers = Array.from(offerMap.values()).map((offer) => {
+    const scoring = scoreDiscoveryOffer(offer);
+    const matching = matchProfileToOffer(config, offer);
 
     return {
       ...offer,
-      relevanceScore,
-      relevanceLabel: buildOfferScoreLabel(relevanceScore),
+      relevanceScore: scoring.score,
+      relevanceLabel: scoring.label,
+      matching,
     };
   });
   const generatedAt = new Date().toISOString();
+  const rankedOffers = scoredOffers.sort(compareOffers).slice(0, maxOffers);
 
   return {
     generatedAt,
-    summary: `Recherche initiale executee sur ${executions.length} requete(s) Welcome to the Jungle pour ${scoredOffers.length} offre(s) dedupliquee(s).`,
+    summary: `Recherche initiale executee sur ${executions.length} requete(s) Welcome to the Jungle pour ${rankedOffers.length} offre(s) dedupliquee(s), puis classee(s) par match et priorite utilisateur.`,
     planSummary: plan.summary,
     queryCount: plan.queries.length,
     executedQueryCount: executions.length,
-    offerCount: scoredOffers.length,
+    offerCount: rankedOffers.length,
     providers: [
       {
         id: "wttj",
@@ -303,7 +279,8 @@ export async function discoverInitialOffers(
     ],
     queryExecutions: executions,
     warnings,
-    offers: scoredOffers.sort(compareOffers),
-    normalizedOffers: normalizeDiscoveryOffers(scoredOffers, generatedAt),
+    offers: rankedOffers,
+    normalizedOffers: normalizeDiscoveryOffers(rankedOffers, generatedAt),
+    persistence: null,
   };
 }

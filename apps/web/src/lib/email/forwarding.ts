@@ -5,11 +5,16 @@ import {
   EmailIngestionSourceType,
   InboundEmailSignal,
   InboundEmailStatus,
+  Prisma,
 } from "@prisma/client";
 import { z } from "zod";
 
 import { type AuthenticatedViewer, assertAuthenticatedViewer } from "@/lib/auth/viewer";
 import { db } from "@/lib/db";
+import {
+  type InboundEmailOpportunityCandidate,
+  parseInboundEmailOpportunity,
+} from "@/lib/email/opportunities";
 
 const FORWARDING_LABEL = "Forwarding dedie";
 const FORWARDING_WEBHOOK_PATH = "/api/email/forwarding/intake";
@@ -69,13 +74,39 @@ export const forwardingProvisionRequestSchema = z
 
 const forwardingRecentEmailSchema = z.object({
   id: z.string(),
+  fromName: z.string().nullable(),
   fromEmail: z.string().nullable(),
   subject: z.string().nullable(),
+  bodyPreview: z.string().nullable(),
   receivedAt: z.string().datetime(),
   signal: z.nativeEnum(InboundEmailSignal),
   processingStatus: z.nativeEnum(InboundEmailStatus),
   canonicalUrl: z.string().nullable(),
   snippet: z.string().nullable(),
+  parsingSummary: z.string(),
+  parsingNotes: z.array(z.string()),
+  normalizedOpportunity: z
+    .object({
+      id: z.string(),
+      rawSourceId: z.string(),
+      fingerprint: z.string(),
+      origin: z.enum(["WEB_DISCOVERY", "INBOUND_EMAIL"]),
+      sourceKind: z.enum(["JOB_BOARD", "COMPANY_CAREERS", "INBOUND_EMAIL"]),
+      sourceProvider: z.string(),
+      sourceLabel: z.string(),
+      title: z.string().nullable(),
+      companyName: z.string().nullable(),
+      locationLabel: z.string().nullable(),
+      countryCode: z.string().nullable(),
+      contractType: z.string().nullable(),
+      workMode: z.string().nullable(),
+      description: z.string().nullable(),
+      sourceUrl: z.string().nullable(),
+      publishedAt: z.string().nullable(),
+      capturedAt: z.string(),
+      signal: z.string().nullable(),
+    })
+    .nullable(),
 });
 
 const forwardingSourceSnapshotSchema = z.object({
@@ -116,12 +147,35 @@ type NormalizedForwardedEmailPayload = {
   provider: string | null;
 };
 
+const inboundEmailProjectionSelect = {
+  id: true,
+  fromEmail: true,
+  fromName: true,
+  subject: true,
+  bodyPreview: true,
+  snippet: true,
+  receivedAt: true,
+  signal: true,
+  processingStatus: true,
+  canonicalUrl: true,
+} satisfies Prisma.InboundEmailSelect;
+
+type InboundEmailProjection = Prisma.InboundEmailGetPayload<{
+  select: typeof inboundEmailProjectionSelect;
+}>;
+
 function getAppBaseUrl() {
   return process.env.APP_BASE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://127.0.0.1:3000";
 }
 
 function getForwardingDomain() {
-  return process.env.EMAIL_FORWARDING_DOMAIN?.trim() || null;
+  const configuredValue = process.env.EMAIL_FORWARDING_DOMAIN?.trim().toLowerCase() || null;
+
+  if (!configuredValue) {
+    return null;
+  }
+
+  return configuredValue.includes("@") ? configuredValue.split("@").at(-1) ?? null : configuredValue;
 }
 
 function buildWebhookUrl() {
@@ -310,6 +364,7 @@ function buildInstructions(forwardingAddress: string | null) {
     "Provisionner un forwarding genere un secret unique et un point d ingestion HTTP cote serveur.",
     "Si un domaine de forwarding est configure, tu peux centraliser les alertes sur une adresse dediee par utilisateur.",
     "Sans domaine de forwarding, le webhook reste exploitable via un provider inbound ou un outil d automatisation.",
+    "Chaque email recu est maintenant classe puis projete dans le format commun d opportunite ou mis de cote si le signal n est pas exploitable.",
     "Le secret de forwarding n est affiche qu au moment de la generation et doit etre conserve cote utilisateur ou secret manager.",
   ];
 
@@ -320,7 +375,76 @@ function buildInstructions(forwardingAddress: string | null) {
   return instructions;
 }
 
+function toOpportunityCandidate(email: InboundEmailProjection): InboundEmailOpportunityCandidate {
+  return {
+    id: email.id,
+    fromName: email.fromName,
+    fromEmail: email.fromEmail,
+    subject: email.subject,
+    bodyPreview: email.bodyPreview,
+    snippet: email.snippet,
+    canonicalUrl: email.canonicalUrl,
+    signal: email.signal,
+    receivedAt: email.receivedAt,
+  };
+}
+
+function toRecentEmailSnapshot(email: InboundEmailProjection) {
+  const parsedOpportunity = parseInboundEmailOpportunity(toOpportunityCandidate(email));
+
+  return {
+    id: email.id,
+    fromName: email.fromName,
+    fromEmail: email.fromEmail,
+    subject: email.subject,
+    bodyPreview: email.bodyPreview,
+    receivedAt: email.receivedAt.toISOString(),
+    signal: email.signal,
+    processingStatus: email.processingStatus,
+    canonicalUrl: email.canonicalUrl,
+    snippet: email.snippet,
+    parsingSummary: parsedOpportunity.parsingSummary,
+    parsingNotes: parsedOpportunity.parsingNotes,
+    normalizedOpportunity: parsedOpportunity.normalizedOpportunity,
+  };
+}
+
+async function ensureParsedInboundEmails(userId: string) {
+  const pendingEmails = await db.inboundEmail.findMany({
+    where: {
+      userId,
+      processingStatus: InboundEmailStatus.RECEIVED,
+    },
+    orderBy: {
+      receivedAt: "desc",
+    },
+    take: 25,
+    select: inboundEmailProjectionSelect,
+  });
+
+  if (pendingEmails.length === 0) {
+    return;
+  }
+
+  await db.$transaction(
+    pendingEmails.map((email) => {
+      const parsedOpportunity = parseInboundEmailOpportunity(toOpportunityCandidate(email));
+
+      return db.inboundEmail.update({
+        where: {
+          id: email.id,
+        },
+        data: {
+          processingStatus: parsedOpportunity.processingStatus,
+        },
+      });
+    }),
+  );
+}
+
 async function buildSnapshot(userId: string): Promise<ForwardingSourceSnapshot> {
+  await ensureParsedInboundEmails(userId);
+
   const connection = await db.emailIngestionConnection.findUnique({
     where: {
       userId_sourceType: {
@@ -345,16 +469,7 @@ async function buildSnapshot(userId: string): Promise<ForwardingSourceSnapshot> 
           receivedAt: "desc",
         },
         take: 10,
-        select: {
-          id: true,
-          fromEmail: true,
-          subject: true,
-          receivedAt: true,
-          signal: true,
-          processingStatus: true,
-          canonicalUrl: true,
-          snippet: true,
-        },
+        select: inboundEmailProjectionSelect,
       },
     },
   });
@@ -377,16 +492,7 @@ async function buildSnapshot(userId: string): Promise<ForwardingSourceSnapshot> 
         }
       : null,
     recentEmails:
-      connection?.inboundEmails.map((email) => ({
-        id: email.id,
-        fromEmail: email.fromEmail,
-        subject: email.subject,
-        receivedAt: email.receivedAt.toISOString(),
-        signal: email.signal,
-        processingStatus: email.processingStatus,
-        canonicalUrl: email.canonicalUrl,
-        snippet: email.snippet,
-      })) ?? [],
+      connection?.inboundEmails.map((email) => toRecentEmailSnapshot(email)) ?? [],
     instructions: buildInstructions(forwardingAddress),
   });
 }
@@ -532,18 +638,47 @@ export async function ingestForwardedEmail(input: unknown, providedSecret: strin
       },
       select: {
         id: true,
+        fromName: true,
+        fromEmail: true,
+        subject: true,
+        bodyPreview: true,
+        snippet: true,
+        canonicalUrl: true,
+        signal: true,
+        receivedAt: true,
+        processingStatus: true,
       },
     });
 
     if (existing) {
+      const parsedOpportunity = parseInboundEmailOpportunity(toOpportunityCandidate(existing));
+
       return {
         ok: true as const,
         status: 200,
         deduplicated: true,
         emailId: existing.id,
+        processingStatus: existing.processingStatus,
+        normalizedOpportunity: parsedOpportunity.normalizedOpportunity,
       };
     }
   }
+
+  const emailForParsing = {
+    id: "pending",
+    fromName: sender.name,
+    fromEmail: sender.email,
+    subject: truncate(normalizedPayload.subject, 300),
+    bodyPreview,
+    snippet:
+      truncate(normalizedPayload.snippet, SNIPPET_LENGTH) ??
+      truncate(bodyPreview, SNIPPET_LENGTH),
+    canonicalUrl,
+    signal,
+    receivedAt,
+  } satisfies InboundEmailOpportunityCandidate;
+
+  const parsedAtIngestion = parseInboundEmailOpportunity(emailForParsing);
 
   const email = await db.$transaction(async (tx) => {
     const created = await tx.inboundEmail.create({
@@ -561,14 +696,20 @@ export async function ingestForwardedEmail(input: unknown, providedSecret: strin
           truncate(bodyPreview, SNIPPET_LENGTH),
         canonicalUrl,
         signal,
-        processingStatus: InboundEmailStatus.RECEIVED,
+        processingStatus: parsedAtIngestion.processingStatus,
         receivedAt,
       },
       select: {
         id: true,
+        fromName: true,
+        fromEmail: true,
+        subject: true,
+        bodyPreview: true,
+        snippet: true,
         signal: true,
         canonicalUrl: true,
         receivedAt: true,
+        processingStatus: true,
       },
     });
 
@@ -592,5 +733,8 @@ export async function ingestForwardedEmail(input: unknown, providedSecret: strin
     emailId: email.id,
     signal: email.signal,
     canonicalUrl: email.canonicalUrl,
+    processingStatus: email.processingStatus,
+    normalizedOpportunity: parseInboundEmailOpportunity(toOpportunityCandidate(email))
+      .normalizedOpportunity,
   };
 }

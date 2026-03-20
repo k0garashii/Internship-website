@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 import type { SearchDiscoveryResult } from "@/lib/search/types";
 
@@ -53,6 +54,7 @@ function formatPublishedAt(value: string | null) {
 }
 
 export function SearchDiscoveryPanel({ disabled }: Props) {
+  const router = useRouter();
   const [result, setResult] = useState<SearchDiscoveryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -76,6 +78,7 @@ export function SearchDiscoveryPanel({ disabled }: Props) {
     }
 
     setResult(payload);
+    router.refresh();
     setIsLoading(false);
   }
 
@@ -83,7 +86,7 @@ export function SearchDiscoveryPanel({ disabled }: Props) {
     <section className="grid gap-6 xl:grid-cols-[0.78fr_1.22fr]">
       <aside className="space-y-6 rounded-[2rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] md:p-8">
         <div className="space-y-3">
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
+          <p className="app-kicker">
             Execution
           </p>
           <h2 className="text-2xl font-semibold tracking-tight text-foreground">
@@ -91,7 +94,8 @@ export function SearchDiscoveryPanel({ disabled }: Props) {
           </h2>
           <p className="text-sm leading-7 text-foreground">
             Le bouton lance les variantes affichees plus haut, interroge Welcome to the
-            Jungle, puis deduplique et score les offres avant affichage.
+            Jungle, puis deduplique et score les offres avant affichage. Les offres
+            persistees affichees plus bas sont rechargees apres chaque collecte.
           </p>
         </div>
 
@@ -106,7 +110,7 @@ export function SearchDiscoveryPanel({ disabled }: Props) {
 
         <div aria-live="polite" className="text-sm leading-7 text-muted">
           {result
-            ? `${result.offerCount} offre(s) previsualisee(s), ${result.normalizedOffers.length} opportunite(s) normalisee(s) apres ${result.executedQueryCount} requete(s).`
+            ? `${result.offerCount} offre(s) previsualisee(s), ${result.normalizedOffers.length} opportunite(s) normalisee(s) et ${result.persistence?.persistedOfferCount ?? 0} offre(s) persistee(s) apres ${result.executedQueryCount} requete(s).`
             : "Aucune collecte n a encore ete lancee sur cette session."}
         </div>
 
@@ -130,25 +134,38 @@ export function SearchDiscoveryPanel({ disabled }: Props) {
               <p className="mt-2 text-sm leading-7 text-foreground">{result.planSummary}</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-[1.25rem] border border-line bg-slate-50 p-4">
+              <div className="surface-muted rounded-[1.25rem] p-4">
                 <p className="text-xs uppercase tracking-[0.16em] text-muted">Source</p>
                 <p className="mt-2 text-base font-medium text-foreground">
                   {result.providers[0]?.label ?? "Inconnue"}
                 </p>
               </div>
-              <div className="rounded-[1.25rem] border border-line bg-slate-50 p-4">
+              <div className="surface-muted rounded-[1.25rem] p-4">
                 <p className="text-xs uppercase tracking-[0.16em] text-muted">Langue index</p>
                 <p className="mt-2 text-base font-medium text-foreground">
                   {(result.providers[0]?.language ?? "n/a").toUpperCase()}
                 </p>
               </div>
-              <div className="rounded-[1.25rem] border border-line bg-slate-50 p-4">
+              <div className="surface-muted rounded-[1.25rem] p-4">
                 <p className="text-xs uppercase tracking-[0.16em] text-muted">Format commun</p>
                 <p className="mt-2 text-base font-medium text-foreground">
                   {result.normalizedOffers.length} opportunite(s)
                 </p>
               </div>
+              <div className="surface-muted rounded-[1.25rem] p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-muted">Persistance</p>
+                <p className="mt-2 text-base font-medium text-foreground">
+                  {result.persistence?.persistedOfferCount ?? 0} offre(s)
+                </p>
+              </div>
             </div>
+            {result.persistence ? (
+              <div className="surface-muted rounded-[1.25rem] p-4 text-sm leading-7 text-foreground">
+                Run en base: <span className="font-medium">{result.persistence.searchRunId}</span>.
+                {` ${result.persistence.createdOfferCount}`} nouvelle(s) offre(s),
+                {` ${result.persistence.updatedOfferCount}`} deja vue(s) remise(s) a jour.
+              </div>
+            ) : null}
             {result.queryExecutions.length > 0 ? (
               <div>
                 <p className="text-sm text-muted">Requetes executees</p>
@@ -160,12 +177,12 @@ export function SearchDiscoveryPanel({ disabled }: Props) {
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <p className="text-sm font-medium text-foreground">{execution.label}</p>
-                        <span className="rounded-full border border-line bg-slate-50 px-3 py-1 text-xs font-medium text-foreground">
+                        <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground">
                           {execution.returnedHits} / {execution.totalHits} hit(s)
                         </span>
                       </div>
                       <div className="mt-3 grid gap-3 md:grid-cols-3">
-                        <div className="rounded-[1rem] border border-line bg-slate-50 p-3">
+                        <div className="surface-muted rounded-[1rem] p-3">
                           <p className="text-[11px] uppercase tracking-[0.16em] text-muted">
                             Role
                           </p>
@@ -173,7 +190,7 @@ export function SearchDiscoveryPanel({ disabled }: Props) {
                             {execution.targetRole}
                           </p>
                         </div>
-                        <div className="rounded-[1rem] border border-line bg-slate-50 p-3">
+                        <div className="surface-muted rounded-[1rem] p-3">
                           <p className="text-[11px] uppercase tracking-[0.16em] text-muted">
                             Domaine
                           </p>
@@ -181,7 +198,7 @@ export function SearchDiscoveryPanel({ disabled }: Props) {
                             {execution.domain ?? "Sans filtre domaine"}
                           </p>
                         </div>
-                        <div className="rounded-[1rem] border border-line bg-slate-50 p-3">
+                        <div className="surface-muted rounded-[1rem] p-3">
                           <p className="text-[11px] uppercase tracking-[0.16em] text-muted">
                             Zone
                           </p>
@@ -239,20 +256,29 @@ export function SearchDiscoveryPanel({ disabled }: Props) {
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="space-y-3">
                   <div className="flex flex-wrap gap-2">
-                    <span className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-900">
+                    <span className="status-pill status-pill-success">
                       {offer.sourceSite}
                     </span>
-                    <span className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
+                    <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground">
                       {formatContractLabel(offer.contractType)}
                     </span>
-                    <span className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
+                    <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground">
                       {formatRemoteLabel(offer.remoteMode)}
                     </span>
-                    <span className="rounded-full border border-sky-300 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-900">
+                    <span className="status-pill status-pill-info">
                       Score {offer.relevanceScore}/100
+                    </span>
+                    <span className="rounded-full border border-[rgba(160,117,106,0.28)] bg-[rgba(160,117,106,0.12)] px-3 py-1 text-xs font-medium text-foreground">
+                      Match {offer.matching.score}/100
+                    </span>
+                    <span className="status-pill status-pill-accent">
+                      Priorite {offer.priorityScore}
                     </span>
                     <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground">
                       {offer.relevanceLabel}
+                    </span>
+                    <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground">
+                      {offer.matching.label}
                     </span>
                   </div>
                   <div>
@@ -289,11 +315,12 @@ export function SearchDiscoveryPanel({ disabled }: Props) {
                 </div>
                 <div className="space-y-3 rounded-[1.5rem] border border-line bg-white/70 p-4">
                   <p className="text-sm font-medium text-foreground">Correspondance profil</p>
+                  <p className="text-sm leading-7 text-foreground">{offer.matching.summary}</p>
                   <div className="flex flex-wrap gap-2">
                     {offer.matchedQueryLabels.map((label) => (
                       <span
                         key={label}
-                        className="rounded-full border border-line bg-slate-50 px-3 py-1 text-xs font-medium uppercase tracking-[0.12em] text-foreground"
+                        className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium uppercase tracking-[0.12em] text-foreground"
                       >
                         {label}
                       </span>
@@ -307,6 +334,35 @@ export function SearchDiscoveryPanel({ disabled }: Props) {
                       ? offer.matchedKeywords.join(", ")
                       : "Aucune occurrence forte parmi les mots cles sauvegardes."}
                   </p>
+                  {offer.matching.breakdown.length > 0 ? (
+                    <>
+                      <p className="text-xs uppercase tracking-[0.16em] text-muted">
+                        Justification du match
+                      </p>
+                      <div className="space-y-2">
+                        {offer.matching.breakdown.map((item) => (
+                          <div key={`${offer.id}-${item.criterion}`} className="rounded-[1rem] border border-line bg-white p-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="text-sm font-medium text-foreground">
+                                {item.criterion}
+                              </p>
+                              <span className="rounded-full border border-line bg-[rgba(180,241,240,0.22)] px-3 py-1 text-xs font-medium text-foreground">
+                                +{item.awarded}/{item.max}
+                              </span>
+                            </div>
+                            <p className="mt-2 text-sm leading-6 text-foreground">
+                              {item.reason}
+                            </p>
+                            {item.matchedTerms.length > 0 ? (
+                              <p className="mt-2 text-xs leading-6 text-muted">
+                                {item.matchedTerms.join(", ")}
+                              </p>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
                 </div>
               </div>
             </article>

@@ -72,6 +72,12 @@ const secondaryGroups = [
         description: "Forwarding et messages recus",
         shortLabel: "EM",
       },
+      {
+        href: "/workspace/drafts",
+        label: "Brouillons",
+        description: "Relire et copier les emails generes",
+        shortLabel: "BR",
+      },
     ],
   },
 ] as const;
@@ -102,8 +108,8 @@ function SidebarLink({
       aria-current={isCurrent ? "page" : undefined}
       className={
         isCurrent
-          ? "block w-full rounded-[1.2rem] bg-foreground px-4 py-3 text-white"
-          : "block w-full rounded-[1.2rem] px-4 py-3 text-foreground transition hover:bg-white/70"
+          ? "block w-full rounded-[1.2rem] border border-transparent bg-foreground px-4 py-3 text-white shadow-[0_16px_30px_rgba(43,36,51,0.18)]"
+          : "block w-full rounded-[1.2rem] border border-transparent px-4 py-3 text-foreground transition hover:border-line hover:bg-white/80"
       }
     >
       <p className="font-mono text-[11px] uppercase tracking-[0.2em] opacity-70">
@@ -127,16 +133,16 @@ function SidebarContent({
   onNavigate?: () => void;
 }) {
   return (
-    <div className="flex h-full flex-col rounded-[2rem] border border-line bg-card p-4 shadow-[0_18px_45px_rgba(31,41,55,0.05)]">
+    <div className="flex h-full flex-col rounded-[2rem] border border-line bg-card/95 p-4 shadow-[0_18px_45px_rgba(31,41,55,0.05)] backdrop-blur">
       <div className="space-y-4 border-b border-line pb-5">
         <Link
           href="/"
           onClick={onNavigate}
-          className="inline-flex items-center rounded-full border border-line px-4 py-2 font-mono text-[11px] uppercase tracking-[0.22em] text-muted transition hover:bg-white/70"
+          className="inline-flex items-center rounded-full border border-line px-4 py-2 font-mono text-[11px] uppercase tracking-[0.22em] text-muted transition hover:bg-white/80"
         >
           Retour page de garde
         </Link>
-        <div className="rounded-[1.5rem] border border-line bg-white/70 p-4">
+        <div className="surface-muted rounded-[1.5rem] p-4">
           <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted">
             Espace utilisateur
           </p>
@@ -203,7 +209,7 @@ export function WorkspaceNav({ fullName, email }: Props) {
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}
-        className="fixed left-4 top-4 z-40 inline-flex items-center rounded-full border border-line bg-white/90 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.22em] text-foreground shadow-[0_12px_24px_rgba(31,41,55,0.12)] lg:hidden"
+        className="fixed left-4 top-4 z-40 inline-flex items-center rounded-full border border-line bg-white/95 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.22em] text-foreground shadow-[0_12px_24px_rgba(31,41,55,0.12)] backdrop-blur lg:hidden"
       >
         {isOpen ? "Fermer" : "Menu"}
       </button>

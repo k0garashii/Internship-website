@@ -28,17 +28,17 @@ const availableFeatures = [
 export default function Home() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-10 md:px-10 md:py-14">
-      <section className="overflow-hidden rounded-[2rem] border border-line bg-card shadow-[0_20px_80px_rgba(31,41,55,0.08)] backdrop-blur">
+      <section className="app-hero overflow-hidden">
         <div className="grid gap-8 px-6 py-8 md:grid-cols-[1.35fr_0.85fr] md:px-10 md:py-12">
           <div className="space-y-6">
-            <div className="inline-flex items-center rounded-full border border-line bg-white/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.24em] text-muted">
+            <div className="status-pill status-pill-accent">
               Assistant de veille stage et emploi
             </div>
             <div className="space-y-4">
               <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-foreground md:text-6xl">
                 Trouve des opportunites pertinentes meme hors des circuits les plus visibles.
               </h1>
-              <p className="max-w-2xl text-base leading-8 text-muted md:text-lg">
+              <p className="app-copy max-w-2xl">
                 Le produit centralise le profil candidat, deduit des entreprises cibles,
                 cherche des offres publiques et prepare aussi une entree par email pour
                 recuperer des annonces qui ne remontent pas toujours sur LinkedIn.
@@ -60,13 +60,16 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="rounded-[1.75rem] border border-line bg-slate-950 p-6 text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-            <p className="font-mono text-xs uppercase tracking-[0.28em] text-teal-300">
+          <div className="rounded-[1.75rem] border border-white/10 bg-foreground p-6 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+            <p className="font-mono text-xs uppercase tracking-[0.28em] text-[var(--butter)]">
               Points forts
             </p>
-            <ul className="mt-5 space-y-4 text-sm leading-7 text-slate-100">
+            <ul className="mt-5 space-y-4 text-sm leading-7 text-white/90">
               {strengths.map((item) => (
-                <li key={item} className="rounded-[1.1rem] border border-white/10 bg-white/5 px-4 py-3">
+                <li
+                  key={item}
+                  className="rounded-[1.1rem] border border-white/10 bg-white/5 px-4 py-3"
+                >
                   {item}
                 </li>
               ))}
@@ -94,7 +97,7 @@ export default function Home() {
 
       <section className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
         <article className="rounded-[1.75rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] md:p-8">
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
+          <p className="app-kicker">
             Ce que permet deja le MVP
           </p>
           <ul className="mt-5 space-y-4 text-sm leading-7 text-foreground md:text-base">
@@ -107,13 +110,14 @@ export default function Home() {
         </article>
 
         <article className="rounded-[1.75rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] md:p-8">
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-            Reference technique
+          <p className="app-kicker">
+            Ce que tu retrouves ensuite
           </p>
           <p className="mt-5 text-sm leading-7 text-foreground md:text-base">
-            Le detail de la stack, de l architecture et des decisions techniques a ete
-            deplace dans le README et dans `docs/architecture`. La page de garde reste
-            volontairement centree sur le produit et les fonctionnalites visibles.
+            Une fois connecte, l application te guide dans le meme ordre que le besoin
+            utilisateur: profil, preferences, recherche, emails et brouillons. La
+            documentation technique reste disponible dans le README, mais l accueil
+            reste centre sur l usage.
           </p>
         </article>
       </section>

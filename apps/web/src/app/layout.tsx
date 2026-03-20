@@ -33,7 +33,12 @@ export default function RootLayout({
   return (
     <html lang="fr" className={bodyClassName}>
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        {children}
+        <a href="#main-content" className="skip-link">
+          Aller au contenu
+        </a>
+        <div id="main-content" className="contents">
+          {children}
+        </div>
       </body>
     </html>
   );

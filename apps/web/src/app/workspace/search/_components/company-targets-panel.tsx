@@ -81,7 +81,7 @@ export function CompanyTargetsPanel({ disabled }: Props) {
     <section className="grid gap-6 xl:grid-cols-[0.82fr_1.18fr]">
       <aside className="space-y-6 rounded-[2rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] md:p-8">
         <div className="space-y-3">
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
+          <p className="app-kicker">
             Entreprises cibles
           </p>
           <h2 className="text-2xl font-semibold tracking-tight text-foreground">
@@ -143,13 +143,13 @@ export function CompanyTargetsPanel({ disabled }: Props) {
               <p className="mt-2 text-sm leading-7 text-foreground">{result.summary}</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-[1.25rem] border border-line bg-slate-50 p-4">
+              <div className="surface-muted rounded-[1.25rem] p-4">
                 <p className="text-xs uppercase tracking-[0.16em] text-muted">Provider</p>
                 <p className="mt-2 text-base font-medium text-foreground">
                   {result.provider === "gemini" ? "Gemini" : "Heuristique locale"}
                 </p>
               </div>
-              <div className="rounded-[1.25rem] border border-line bg-slate-50 p-4">
+              <div className="surface-muted rounded-[1.25rem] p-4">
                 <p className="text-xs uppercase tracking-[0.16em] text-muted">Usage</p>
                 <p className="mt-2 text-sm leading-6 text-foreground">
                   Prochaine etape: decouvrir les pages carrieres et ATS de ces entreprises.
@@ -184,7 +184,7 @@ export function CompanyTargetsPanel({ disabled }: Props) {
                     {suggestion.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="rounded-full border border-sky-300 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-900"
+                        className="status-pill status-pill-info"
                       >
                         {tag}
                       </span>
@@ -238,7 +238,7 @@ export function CompanyTargetsPanel({ disabled }: Props) {
                       suggestion.matchedSignals.map((signal) => (
                         <span
                           key={signal}
-                          className="rounded-full border border-line bg-slate-50 px-3 py-1 text-xs font-medium uppercase tracking-[0.12em] text-foreground"
+                          className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium uppercase tracking-[0.12em] text-foreground"
                         >
                           {signal}
                         </span>
@@ -267,7 +267,7 @@ export function CompanyTargetsPanel({ disabled }: Props) {
                       <span
                         className={
                           discovery.status === "found"
-                            ? "rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-900"
+                            ? "status-pill status-pill-success"
                             : discovery.status === "error"
                               ? "rounded-full border border-red-300 bg-red-50 px-3 py-1 text-xs font-medium text-red-800"
                               : "rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900"
@@ -279,14 +279,14 @@ export function CompanyTargetsPanel({ disabled }: Props) {
                             ? "Erreur de detection"
                             : "Non detecte"}
                       </span>
-                      <span className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
+                      <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground">
                         {discovery.discoveryMethod}
                       </span>
-                      <span className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
+                      <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground">
                         confiance {discovery.confidence}
                       </span>
                       {discovery.atsProvider ? (
-                        <span className="rounded-full border border-violet-300 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-900">
+                        <span className="status-pill status-pill-accent">
                           ATS {discovery.atsProvider}
                         </span>
                       ) : null}

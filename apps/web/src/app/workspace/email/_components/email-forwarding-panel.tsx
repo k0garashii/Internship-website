@@ -56,7 +56,7 @@ export function EmailForwardingPanel({ initialSnapshot }: Props) {
     <section className="grid gap-6 xl:grid-cols-[0.86fr_1.14fr]">
       <aside className="space-y-6 rounded-[2rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] md:p-8">
         <div className="space-y-3">
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
+          <p className="app-kicker">
             Forwarding email
           </p>
           <h2 className="text-2xl font-semibold tracking-tight text-foreground">
@@ -127,7 +127,7 @@ export function EmailForwardingPanel({ initialSnapshot }: Props) {
           </div>
         ) : null}
 
-        <div className="space-y-3 rounded-[1.5rem] border border-line bg-slate-50 p-5">
+        <div className="surface-muted space-y-3 rounded-[1.5rem] p-5">
           <p className="text-sm font-medium text-foreground">Regles produit</p>
           <ul className="space-y-3 text-sm leading-7 text-foreground">
             {snapshot.instructions.map((item) => (
@@ -148,7 +148,7 @@ export function EmailForwardingPanel({ initialSnapshot }: Props) {
               l en-tete `x-forwarding-secret`. Le destinataire doit correspondre a
               l identifiant de forwarding cree pour cet utilisateur.
             </p>
-            <pre className="overflow-x-auto rounded-[1.25rem] border border-line bg-slate-950 p-4 text-xs leading-6 text-slate-100">
+            <pre className="overflow-x-auto rounded-[1.25rem] border border-[rgba(82,71,101,0.18)] bg-foreground p-4 text-xs leading-6 text-white/90">
 {`{
   "envelope": {
     "to": "${examplePayload}",
@@ -198,13 +198,15 @@ export function EmailForwardingPanel({ initialSnapshot }: Props) {
                       <p className="text-sm font-medium text-foreground">
                         {email.subject ?? "Sans sujet"}
                       </p>
-                      <p className="text-sm text-muted">{email.fromEmail ?? "Expediteur inconnu"}</p>
+                      <p className="text-sm text-muted">
+                        {email.fromName ?? email.fromEmail ?? "Expediteur inconnu"}
+                      </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <span className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
+                      <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground">
                         {email.signal}
                       </span>
-                      <span className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
+                      <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground">
                         {email.processingStatus}
                       </span>
                     </div>
@@ -212,6 +214,62 @@ export function EmailForwardingPanel({ initialSnapshot }: Props) {
                   {email.snippet ? (
                     <p className="mt-3 text-sm leading-7 text-foreground">{email.snippet}</p>
                   ) : null}
+                  <div className="surface-muted mt-4 rounded-[1rem] p-4">
+                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted">
+                      Projection pipeline
+                    </p>
+                    <p className="mt-2 text-sm leading-7 text-foreground">
+                      {email.parsingSummary}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {email.parsingNotes.map((note) => (
+                        <span
+                          key={`${email.id}-${note}`}
+                          className="rounded-full border border-line bg-white px-3 py-1 text-xs text-foreground"
+                        >
+                          {note}
+                        </span>
+                      ))}
+                    </div>
+
+                    {email.normalizedOpportunity ? (
+                      <div className="mt-4 rounded-[1rem] border border-line bg-white p-4">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-foreground">
+                              {email.normalizedOpportunity.title ?? "Opportunite sans titre deduit"}
+                            </p>
+                            <p className="mt-1 text-sm text-muted">
+                              {email.normalizedOpportunity.companyName ?? "Entreprise a confirmer"}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800">
+                              {email.normalizedOpportunity.sourceLabel}
+                            </span>
+                            <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground">
+                              {email.normalizedOpportunity.sourceKind}
+                            </span>
+                          </div>
+                        </div>
+                        {email.normalizedOpportunity.description ? (
+                          <p className="mt-3 text-sm leading-7 text-foreground">
+                            {email.normalizedOpportunity.description}
+                          </p>
+                        ) : null}
+                        {email.normalizedOpportunity.sourceUrl ? (
+                          <a
+                            href={email.normalizedOpportunity.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-4 inline-flex items-center justify-center rounded-full border border-line px-4 py-2 text-sm font-medium text-foreground transition hover:-translate-y-0.5"
+                          >
+                            Ouvrir la source de l opportunite
+                          </a>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
                   <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted">
                     {new Date(email.receivedAt).toLocaleString("fr-FR")}
                   </p>

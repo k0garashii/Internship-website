@@ -37,18 +37,23 @@ export default async function WorkspacePage() {
 
   return (
     <main className="flex min-h-full flex-col gap-8">
-      <section className="rounded-[2rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] md:p-8">
-        <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
+      <section className="app-hero p-6 md:p-8">
+        <p className="app-kicker">
           Tableau de bord
         </p>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
           Bonjour {account.fullName ?? "utilisateur"}.
         </h1>
-        <p className="mt-4 max-w-3xl text-base leading-8 text-muted md:text-lg">
+        <p className="app-copy mt-4 max-w-3xl">
           Cette vue garde uniquement les indicateurs utiles. La navigation de gauche
-          donne acces au profil, aux preferences, a l ingestion email et a la
-          recherche d offres.
+          sert ensuite a completer le profil, ajuster la recherche et suivre les
+          messages ou brouillons sans changer de logique.
         </p>
+        <div className="status-row mt-6">
+          <div className="status-pill">Profil + preferences</div>
+          <div className="status-pill status-pill-info">Recherche + offres</div>
+          <div className="status-pill status-pill-success">Emails + brouillons</div>
+        </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

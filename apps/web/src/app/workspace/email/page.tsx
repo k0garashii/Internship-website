@@ -13,18 +13,24 @@ export default async function EmailWorkspacePage() {
 
   return (
     <main className="flex min-h-full flex-col gap-8">
-      <section className="rounded-[2rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] md:p-8">
-        <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
+      <section className="app-hero p-6 md:p-8">
+        <p className="app-kicker">
           Ingestion email
         </p>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
           Connecter un forwarding dedie.
         </h1>
-        <p className="mt-4 max-w-3xl text-base leading-8 text-muted md:text-lg">
+        <p className="app-copy mt-4 max-w-3xl">
           Cette etape ajoute une voie d entree serveur pour les alertes emploi,
           emails recruteurs et messages campus. Le MVP actuel priorise un forwarding
-          dedie sans OAuth complet pour garder un perimetre simple et controle.
+          dedie sans OAuth complet, puis projette chaque message recu dans le
+          format commun d opportunite quand le signal est exploitable.
         </p>
+        <div className="status-row mt-6">
+          <div className="status-pill">Forwarding par utilisateur</div>
+          <div className="status-pill status-pill-info">Messages recus traces</div>
+          <div className="status-pill status-pill-success">Opportunites detectees quand le signal est utile</div>
+        </div>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
@@ -56,7 +62,7 @@ export default async function EmailWorkspacePage() {
             <li>Provisionner un point d ingestion serveur pour des emails d opportunites.</li>
             <li>Generer un identifiant de forwarding par utilisateur et un secret de webhook.</li>
             <li>Recevoir puis stocker les messages entrants avec metadonnees utiles et premier signal.</li>
-            <li>Laisser le parsing fin vers opportunites structurees a la tache suivante.</li>
+            <li>Projeter les alertes, digests et prises de contact utiles en opportunites structurees.</li>
           </ul>
         </article>
       </section>

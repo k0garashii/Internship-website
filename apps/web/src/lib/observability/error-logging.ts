@@ -1,4 +1,4 @@
-type LogLevel = "warn" | "error";
+type LogLevel = "info" | "warn" | "error";
 
 type LogRequestContext = {
   method?: string;
@@ -68,7 +68,8 @@ function serializeError(error: unknown): Record<string, unknown> {
 }
 
 function writeLog(level: LogLevel, label: string, payload: Record<string, unknown>) {
-  const logger = level === "error" ? console.error : console.warn;
+  const logger =
+    level === "error" ? console.error : level === "warn" ? console.warn : console.info;
 
   logger(label, payload);
 }
@@ -92,6 +93,22 @@ export function logRouteError(options: {
   });
 }
 
+export function logRouteEvent(options: {
+  route: string;
+  request?: Request;
+  message: string;
+  status?: number;
+  metadata?: Record<string, unknown>;
+}) {
+  writeLog("info", "[route-event]", {
+    route: options.route,
+    message: options.message,
+    status: options.status,
+    request: buildRequestContext(options.request),
+    metadata: options.metadata ?? null,
+  });
+}
+
 export function logServiceError(options: {
   level?: LogLevel;
   scope: string;
@@ -103,6 +120,18 @@ export function logServiceError(options: {
     scope: options.scope,
     message: options.message,
     error: options.error === undefined ? null : serializeError(options.error),
+    metadata: options.metadata ?? null,
+  });
+}
+
+export function logServiceEvent(options: {
+  scope: string;
+  message: string;
+  metadata?: Record<string, unknown>;
+}) {
+  writeLog("info", "[service-event]", {
+    scope: options.scope,
+    message: options.message,
     metadata: options.metadata ?? null,
   });
 }

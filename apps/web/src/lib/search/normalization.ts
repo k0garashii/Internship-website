@@ -15,6 +15,17 @@ type InboundEmailNormalizationInput = {
   bodyPreview: string | null;
   receivedAt: string;
   signal: string;
+  sourceKind?: NormalizedOpportunity["sourceKind"];
+  sourceProvider?: string | null;
+  sourceLabel?: string | null;
+  title?: string | null;
+  companyName?: string | null;
+  locationLabel?: string | null;
+  contractType?: string | null;
+  workMode?: string | null;
+  description?: string | null;
+  sourceUrl?: string | null;
+  publishedAt?: string | null;
 };
 
 function buildFingerprint(values: Array<string | null | undefined>) {
@@ -72,28 +83,35 @@ export function normalizeDiscoveryOffers(
 export function normalizeInboundEmailOpportunityPreview(
   email: InboundEmailNormalizationInput,
 ): NormalizedOpportunity {
+  const sourceProvider = normalizeText(email.sourceProvider) ?? "forwarding";
+  const sourceLabel = normalizeText(email.sourceLabel) ?? "Forwarding dedie";
+  const sourceUrl = normalizeText(email.sourceUrl ?? email.canonicalUrl);
+  const title = normalizeText(email.title ?? email.subject);
+  const companyName = normalizeText(email.companyName ?? email.fromName ?? email.fromEmail);
+  const description = normalizeText(email.description ?? email.snippet ?? email.bodyPreview);
+
   return {
     id: `normalized:email:${email.id}`,
     rawSourceId: email.id,
     fingerprint: buildFingerprint([
-      "forwarding",
-      email.canonicalUrl,
-      email.fromEmail,
-      email.subject,
+      sourceProvider,
+      sourceUrl,
+      companyName,
+      title,
     ]),
     origin: "INBOUND_EMAIL",
-    sourceKind: "INBOUND_EMAIL",
-    sourceProvider: "forwarding",
-    sourceLabel: "Forwarding dedie",
-    title: normalizeText(email.subject),
-    companyName: normalizeText(email.fromName ?? email.fromEmail),
-    locationLabel: null,
+    sourceKind: email.sourceKind ?? "INBOUND_EMAIL",
+    sourceProvider,
+    sourceLabel,
+    title,
+    companyName,
+    locationLabel: normalizeText(email.locationLabel),
     countryCode: null,
-    contractType: null,
-    workMode: null,
-    description: normalizeText(email.snippet ?? email.bodyPreview),
-    sourceUrl: email.canonicalUrl,
-    publishedAt: email.receivedAt,
+    contractType: normalizeText(email.contractType),
+    workMode: normalizeText(email.workMode),
+    description,
+    sourceUrl,
+    publishedAt: email.publishedAt ?? email.receivedAt,
     capturedAt: email.receivedAt,
     signal: email.signal,
   };

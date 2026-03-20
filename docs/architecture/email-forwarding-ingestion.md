@@ -83,10 +83,10 @@ Une classification heuristique minimale est ajoutee a la reception:
 
 - aucun connecteur Gmail ou Outlook OAuth a ce stade
 - aucun traitement des pieces jointes
-- pas encore de parsing complet vers une opportunite normalisee
 - pas encore de synchronisation planifiee recurrente
+- la persistance finale dans `JobOffer` reste renvoyee a la tache `260`
 
 ## Suite Preparee
 
 - `252`: parser les emails en opportunites structurees
-- `250`: normaliser les offres et opportunites dans un format interne stable
+- `260`: persister les offres et opportunites structurees

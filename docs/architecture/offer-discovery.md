@@ -40,9 +40,9 @@ La route `GET/POST /api/search/discovery` retourne:
 ## Limites volontaires du MVP
 
 - une seule source publique est active
-- aucune persistance en base a ce stade
 - pas de scoring final ni de shortlist
 - pas encore de normalisation multi-sources
+- la collecte reste encore concentree sur les offres web publiques
 
 ## Prochaines taches
 

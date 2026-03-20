@@ -22,18 +22,23 @@ export default async function PreferencesPage() {
 
   return (
     <main className="flex min-h-full flex-col gap-8">
-      <section className="rounded-[2rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] md:p-8">
-        <p className="font-mono text-xs uppercase tracking-[0.24em] text-muted">
+      <section className="app-hero p-6 md:p-8">
+        <p className="app-kicker">
           Preferences de recherche
         </p>
         <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-foreground md:text-6xl">
           Ajuste les roles, les zones et les domaines sans dupliquer le profil.
         </h1>
-        <p className="mt-4 max-w-3xl text-base leading-8 text-muted md:text-lg">
+        <p className="app-copy mt-4 max-w-3xl">
           Les contraintes de candidature restent sur le profil complet. Cette page se
           concentre sur les cibles de recherche et sur l edition directe des domaines
           issus de Gemini.
         </p>
+        <div className="status-row mt-6">
+          <div className="status-pill">Domaines modifiables sur une seule page</div>
+          <div className="status-pill status-pill-info">Generation Gemini relancable</div>
+          <div className="status-pill status-pill-success">Pas de duplication avec le profil</div>
+        </div>
       </section>
 
       <PreferencesForm
