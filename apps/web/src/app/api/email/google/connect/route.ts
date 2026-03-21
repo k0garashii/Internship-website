@@ -7,6 +7,7 @@ import {
   createGmailOauthStatePayload,
   encodeGmailOauthStatePayload,
 } from "@/lib/email/gmail-oauth-state";
+import { getRequestBaseUrl } from "@/lib/http/request-origin";
 import { logRouteError, logRouteEvent } from "@/lib/observability/error-logging";
 
 const connectQuerySchema = z.object({
@@ -27,10 +28,11 @@ function buildCookieOptions() {
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
+  const baseUrl = getRequestBaseUrl(request);
   const viewer = await getCurrentViewer();
 
   if (!viewer) {
-    const signInUrl = new URL("/sign-in", request.url);
+    const signInUrl = new URL("/sign-in", baseUrl);
     signInUrl.searchParams.set("redirectTo", "/workspace/email");
     return NextResponse.redirect(signInUrl);
   }
@@ -44,16 +46,19 @@ export async function GET(request: Request) {
     parsed.success && parsed.data.redirectTo?.startsWith("/")
       ? parsed.data.redirectTo
       : "/workspace/email";
+  const redirectUri = new URL("/api/email/google/callback", baseUrl).toString();
 
   try {
     const statePayload = createGmailOauthStatePayload({
       userId: viewer.userId,
       scopeSet,
       redirectTo,
+      redirectUri,
     });
     const redirectUrl = buildGoogleAuthUrl({
       scopeSet,
       state: statePayload.nonce,
+      redirectUri,
     });
     const response = NextResponse.redirect(redirectUrl);
     response.cookies.set(
@@ -76,7 +81,7 @@ export async function GET(request: Request) {
     return response;
   } catch (error) {
     if (error instanceof GoogleIntegrationError) {
-      const fallbackUrl = new URL(redirectTo, request.url);
+      const fallbackUrl = new URL(redirectTo, baseUrl);
       fallbackUrl.searchParams.set("gmail", "oauth-missing-config");
       return NextResponse.redirect(fallbackUrl);
     }
@@ -93,7 +98,7 @@ export async function GET(request: Request) {
       },
     });
 
-    const fallbackUrl = new URL(redirectTo, request.url);
+    const fallbackUrl = new URL(redirectTo, baseUrl);
     fallbackUrl.searchParams.set("gmail", "oauth-error");
     return NextResponse.redirect(fallbackUrl);
   }

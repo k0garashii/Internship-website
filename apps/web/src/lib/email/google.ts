@@ -173,6 +173,7 @@ export function hasGoogleScopes(
 export function buildGoogleAuthUrl(options: {
   scopeSet: GmailScopeSet;
   state: string;
+  redirectUri?: string;
 }) {
   const config = getGoogleOauthConfig();
 
@@ -182,7 +183,7 @@ export function buildGoogleAuthUrl(options: {
 
   const url = new URL(GOOGLE_AUTH_BASE_URL);
   url.searchParams.set("client_id", config.clientId);
-  url.searchParams.set("redirect_uri", config.redirectUri);
+  url.searchParams.set("redirect_uri", options.redirectUri ?? config.redirectUri);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("scope", getScopesForScopeSet(options.scopeSet).join(" "));
   url.searchParams.set("access_type", "offline");
@@ -206,7 +207,7 @@ async function parseGoogleError(response: Response) {
   }
 }
 
-export async function exchangeGoogleCodeForTokens(code: string) {
+export async function exchangeGoogleCodeForTokens(code: string, redirectUriOverride?: string) {
   const config = getGoogleOauthConfig();
 
   if (!config.clientId || !config.clientSecret) {
@@ -217,7 +218,7 @@ export async function exchangeGoogleCodeForTokens(code: string) {
     code,
     client_id: config.clientId,
     client_secret: config.clientSecret,
-    redirect_uri: config.redirectUri,
+    redirect_uri: redirectUriOverride ?? config.redirectUri,
     grant_type: "authorization_code",
   });
 

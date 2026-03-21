@@ -1,7 +1,12 @@
-import { DraftStatus } from "@prisma/client";
+import {
+  DraftStatus,
+  EmailDeliveryOperation,
+  EmailDeliveryLogStatus,
+} from "@prisma/client";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
+import { createEmailDeliveryLog } from "@/lib/email/delivery-logs";
 import {
   ensureGmailConnectionAccess,
   GmailMailboxError,
@@ -611,7 +616,35 @@ export async function createGmailDraftFromEmailDraft(
         gmailThreadId: gmailDraft.message?.threadId ?? deliveryContext.gmailThreadId,
       },
     });
+
+    await createEmailDeliveryLog({
+      userId,
+      emailDraftId: draft.id,
+      provider: "gmail",
+      operation: EmailDeliveryOperation.GMAIL_DRAFT,
+      status: EmailDeliveryLogStatus.SUCCESS,
+      recipientEmail: deliveryContext.recipientEmail,
+      subject: deliveryContext.subject,
+      bodyPreview: deliveryContext.body,
+      providerDraftId: gmailDraft.id ?? null,
+      providerMessageId: gmailDraft.message?.id ?? null,
+      providerThreadId:
+        gmailDraft.message?.threadId ?? deliveryContext.gmailThreadId,
+    });
   } catch (error) {
+    await createEmailDeliveryLog({
+      userId,
+      emailDraftId: draft.id,
+      provider: "gmail",
+      operation: EmailDeliveryOperation.GMAIL_DRAFT,
+      status: EmailDeliveryLogStatus.FAILED,
+      recipientEmail: deliveryContext.recipientEmail,
+      subject: deliveryContext.subject,
+      bodyPreview: deliveryContext.body,
+      errorMessage:
+        error instanceof Error ? error.message : "Gmail draft creation failed",
+    });
+
     if (error instanceof GmailMailboxError) {
       throw new EmailDraftDeliveryError(error.message, error.status);
     }
@@ -667,7 +700,35 @@ export async function sendEmailDraftWithGmail(
         gmailThreadId: sent.threadId ?? deliveryContext.gmailThreadId,
       },
     });
+
+    await createEmailDeliveryLog({
+      userId,
+      emailDraftId: draft.id,
+      provider: "gmail",
+      operation: EmailDeliveryOperation.GMAIL_SEND,
+      status: EmailDeliveryLogStatus.SUCCESS,
+      recipientEmail: deliveryContext.recipientEmail,
+      subject: deliveryContext.subject,
+      bodyPreview: deliveryContext.body,
+      providerMessageId: sent.id ?? null,
+      providerThreadId: sent.threadId ?? deliveryContext.gmailThreadId,
+      metadata: {
+        labelIds: sent.labelIds ?? [],
+      },
+    });
   } catch (error) {
+    await createEmailDeliveryLog({
+      userId,
+      emailDraftId: draft.id,
+      provider: "gmail",
+      operation: EmailDeliveryOperation.GMAIL_SEND,
+      status: EmailDeliveryLogStatus.FAILED,
+      recipientEmail: deliveryContext.recipientEmail,
+      subject: deliveryContext.subject,
+      bodyPreview: deliveryContext.body,
+      errorMessage: error instanceof Error ? error.message : "Gmail send failed",
+    });
+
     if (error instanceof GmailMailboxError) {
       throw new EmailDraftDeliveryError(error.message, error.status);
     }

@@ -9,6 +9,7 @@ const gmailOauthStatePayloadSchema = z.object({
   userId: z.string().trim().min(1),
   scopeSet: z.enum(["mailbox", "mailbox_send"]),
   redirectTo: z.string().trim().min(1),
+  redirectUri: z.string().trim().url(),
 });
 
 export type GmailOauthStatePayload = z.infer<typeof gmailOauthStatePayloadSchema>;
@@ -17,12 +18,14 @@ export function createGmailOauthStatePayload(input: {
   userId: string;
   scopeSet: GmailScopeSet;
   redirectTo: string;
+  redirectUri: string;
 }): GmailOauthStatePayload {
   return gmailOauthStatePayloadSchema.parse({
     nonce: randomBytes(16).toString("hex"),
     userId: input.userId,
     scopeSet: input.scopeSet,
     redirectTo: input.redirectTo,
+    redirectUri: input.redirectUri,
   });
 }
 

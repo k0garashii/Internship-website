@@ -135,6 +135,17 @@ enum InboundEmailStatus {
   FAILED
 }
 
+enum EmailDeliveryLogStatus {
+  SUCCESS
+  FAILED
+}
+
+enum EmailDeliveryOperation {
+  GMAIL_DRAFT
+  GMAIL_SEND
+  ADHOC_GMAIL_SEND
+}
+
 enum InboundEmailSignal {
   UNKNOWN
   JOB_ALERT
@@ -166,6 +177,7 @@ model User {
   drafts            EmailDraft[]
   emailConnections  EmailIngestionConnection[]
   feedbackEntries   OfferFeedback[]
+  emailDeliveryLogs EmailDeliveryLog[]
   inboundEmails     InboundEmail[]
   jobOffers         JobOffer[]
   profile           UserProfile?
@@ -431,10 +443,10 @@ model OfferFeedback {
 }
 
 model EmailDraft {
-  id                     String      @id @default(cuid())
+  id                     String             @id @default(cuid())
   userId                 String
   jobOfferId             String?
-  status                 DraftStatus @default(DRAFT)
+  status                 DraftStatus        @default(DRAFT)
   recipientEmail         String?
   subject                String?
   body                   String
@@ -447,13 +459,38 @@ model EmailDraft {
   contextSnapshot        Json?
   approvedAt             DateTime?
   sentAt                 DateTime?
-  createdAt              DateTime    @default(now())
-  updatedAt              DateTime    @updatedAt
-  jobOffer               JobOffer?   @relation(fields: [jobOfferId], references: [id], onDelete: SetNull)
-  user                   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  deliveryLogs           EmailDeliveryLog[]
+  jobOffer               JobOffer?          @relation(fields: [jobOfferId], references: [id], onDelete: SetNull)
+  user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
   @@index([jobOfferId])
+}
+
+model EmailDeliveryLog {
+  id                String                 @id @default(cuid())
+  userId            String
+  emailDraftId      String?
+  provider          String
+  operation         EmailDeliveryOperation
+  status            EmailDeliveryLogStatus
+  recipientEmail    String
+  subject           String?
+  bodyPreview       String?
+  errorMessage      String?
+  providerDraftId   String?
+  providerMessageId String?
+  providerThreadId  String?
+  metadata          Json?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  emailDraft        EmailDraft?            @relation(fields: [emailDraftId], references: [id], onDelete: SetNull)
+  user              User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([emailDraftId])
 }
 
 model EmailIngestionConnection {

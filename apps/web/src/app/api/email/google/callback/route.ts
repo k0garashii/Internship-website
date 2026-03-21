@@ -9,6 +9,7 @@ import {
 } from "@/lib/email/gmail-oauth-state";
 import { syncGmailMailbox } from "@/lib/email/gmail-sync";
 import { upsertGmailConnectionFromGoogleOauth } from "@/lib/email/gmail-connection";
+import { getRequestBaseUrl } from "@/lib/http/request-origin";
 import { logRouteError, logRouteEvent } from "@/lib/observability/error-logging";
 
 const callbackQuerySchema = z.object({
@@ -28,14 +29,15 @@ function clearStateCookie() {
   };
 }
 
-function buildRedirectUrl(request: Request, statePayload: GmailOauthStatePayload | null) {
+function buildRedirectUrl(baseUrl: string, statePayload: GmailOauthStatePayload | null) {
   const target = statePayload?.redirectTo?.startsWith("/") ? statePayload.redirectTo : "/workspace/email";
-  return new URL(target, request.url);
+  return new URL(target, baseUrl);
 }
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
+  const baseUrl = getRequestBaseUrl(request);
   const params = callbackQuerySchema.safeParse(
     Object.fromEntries(new URL(request.url).searchParams.entries()),
   );
@@ -47,7 +49,7 @@ export async function GET(request: Request) {
       .find((entry) => entry.startsWith(`${GOOGLE_OAUTH_STATE_COOKIE}=`))
       ?.slice(GOOGLE_OAUTH_STATE_COOKIE.length + 1),
   );
-  const redirectUrl = buildRedirectUrl(request, statePayload);
+  const redirectUrl = buildRedirectUrl(baseUrl, statePayload);
 
   if (!params.success) {
     redirectUrl.searchParams.set("gmail", "oauth-invalid-query");
@@ -74,7 +76,10 @@ export async function GET(request: Request) {
   const userId = viewer?.userId ?? statePayload.userId;
 
   try {
-    const tokens = await exchangeGoogleCodeForTokens(params.data.code);
+    const tokens = await exchangeGoogleCodeForTokens(
+      params.data.code,
+      statePayload.redirectUri,
+    );
     const userInfo = await fetchGoogleUserInfo(tokens.access_token);
     await upsertGmailConnectionFromGoogleOauth({
       userId,

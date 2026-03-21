@@ -88,6 +88,7 @@ export const gmailSyncResultSchema = z.object({
   processedMessageCount: z.number().int().min(0),
   createdMessageCount: z.number().int().min(0),
   updatedMessageCount: z.number().int().min(0),
+  filteredOutMessageCount: z.number().int().min(0),
   detectedReplyCount: z.number().int().min(0),
   usedHistoryCursor: z.boolean(),
   snapshot: gmailConnectionSnapshotSchema,

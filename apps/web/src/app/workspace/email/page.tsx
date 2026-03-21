@@ -1,7 +1,8 @@
 import { getCurrentViewer } from "@/lib/auth/session";
+import { listEmailDeliveryLogsForUser } from "@/lib/email/delivery-logs";
 import { getForwardingSourceSnapshot } from "@/lib/email/forwarding";
 import { getGmailConnectionSnapshot } from "@/lib/email/gmail-connection";
-import { EmailForwardingPanel } from "./_components/email-forwarding-panel";
+import { GmailSendPanel } from "./_components/gmail-send-panel";
 import { GmailMailboxPanel } from "./_components/gmail-mailbox-panel";
 
 function getMailboxSummaryLabel() {
@@ -70,9 +71,10 @@ export default async function EmailWorkspacePage({
     return null;
   }
 
-  const [gmailSnapshot, forwardingSnapshot, resolvedSearchParams] = await Promise.all([
+  const [gmailSnapshot, forwardingSnapshot, deliveryLogs, resolvedSearchParams] = await Promise.all([
     getGmailConnectionSnapshot(viewer.userId),
     getForwardingSourceSnapshot(viewer),
+    listEmailDeliveryLogsForUser(viewer.userId),
     (searchParams ??
       Promise.resolve({} as Record<string, string | string[] | undefined>)),
   ]);
@@ -88,13 +90,8 @@ export default async function EmailWorkspacePage({
       <section className="app-hero p-6 md:p-8">
         <p className="app-kicker">Messagerie</p>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
-          Suivre les reponses de candidature depuis la boite mail.
+          Suivie de candidature en direct.
         </h1>
-        <p className="app-copy mt-4 max-w-3xl">
-          Le produit cible maintenant une lecture Gmail pour comprendre les candidatures
-          reelles, repasser sur les threads utiles et permettre ensuite l envoi depuis
-          le site. Le forwarding dedie reste disponible plus bas comme filet MVP.
-        </p>
         <div className="status-row mt-6">
           <div className="status-pill">Lecture Gmail cible</div>
           <div className="status-pill status-pill-info">Reponses detectees par thread</div>
@@ -114,49 +111,12 @@ export default async function EmailWorkspacePage({
           {banner.message}
         </section>
       ) : null}
-
-      <section className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
-        <article className="rounded-[1.75rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] md:p-8">
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-            Etat du parcours
-          </p>
-          <div className="mt-5 grid gap-4 md:grid-cols-3">
-            <div className="rounded-[1.25rem] border border-line bg-white/70 p-4">
-              <p className="text-sm text-muted">OAuth Gmail</p>
-              <p className="mt-2 text-lg font-medium text-foreground">
-                {gmailSnapshot.oauthConfigured ? "Pret" : "A configurer"}
-              </p>
-            </div>
-            <div className="rounded-[1.25rem] border border-line bg-white/70 p-4">
-              <p className="text-sm text-muted">Boite Gmail</p>
-              <p className="mt-2 text-lg font-medium text-foreground">
-                {mailboxSummaryLabel}
-              </p>
-            </div>
-            <div className="rounded-[1.25rem] border border-line bg-white/70 p-4">
-              <p className="text-sm text-muted">Forwarding fallback</p>
-              <p className="mt-2 text-lg font-medium text-foreground">
-                {forwardingSnapshot.configured ? "Disponible" : "Non provisionne"}
-              </p>
-            </div>
-          </div>
-        </article>
-
-        <article className="rounded-[1.75rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] md:p-8">
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-            Logique produit
-          </p>
-          <ul className="mt-5 space-y-4 text-sm leading-7 text-foreground">
-            <li>La detection de reponse ne depend pas des seuls mails envoyes via l app.</li>
-            <li>La synchro lit les threads Gmail pour retrouver aussi les mails partis hors produit.</li>
-            <li>Les brouillons Gmail peuvent ensuite reutiliser un thread detecte ou partir d une adresse renseignee.</li>
-            <li>Le forwarding reste disponible pour centraliser des alertes ou des opportunites hors Gmail.</li>
-          </ul>
-        </article>
-      </section>
-
       <GmailMailboxPanel initialSnapshot={gmailSnapshot} />
-      <EmailForwardingPanel initialSnapshot={forwardingSnapshot} />
+      <GmailSendPanel
+        defaultRecipientEmail={viewer.email ?? ""}
+        gmailCanSend={gmailSnapshot.source?.hasSendScope ?? false}
+        initialLogs={deliveryLogs}
+      />
     </main>
   );
 }

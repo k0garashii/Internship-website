@@ -1,7 +1,5 @@
 import {
   EmailIngestionConnectionStatus,
-  InboundEmailSignal,
-  InboundEmailStatus,
   MailboxMessageDirection,
 } from "@prisma/client";
 
@@ -21,12 +19,12 @@ import {
   GOOGLE_OAUTH_SCOPES,
   GoogleIntegrationError,
 } from "@/lib/email/google";
+import {
+  buildMailboxProfessionalContext,
+  classifyProfessionalMailboxMessage,
+} from "@/lib/email/mailbox-professional-filter";
 import { gmailSyncResultSchema, type GmailSyncResult } from "@/lib/email/mailbox-sync";
 import { normalizeConversationSubject, recomputeOfferMailboxSignals } from "@/lib/email/mailbox-replies";
-import {
-  type InboundEmailOpportunityCandidate,
-  parseInboundEmailOpportunity,
-} from "@/lib/email/opportunities";
 import { logServiceError, logServiceEvent } from "@/lib/observability/error-logging";
 
 const URL_REGEX = /https?:\/\/[^\s"'<>]+/i;
@@ -103,114 +101,18 @@ function extractCanonicalUrl(input: Array<string | null | undefined>) {
   return null;
 }
 
-function inferMailboxSignal(input: {
-  direction: MailboxMessageDirection;
-  subject: string | null;
-  snippet: string | null;
-  fromEmail: string | null;
-  toEmails: string[];
-}) {
-  const haystack = [input.subject, input.snippet, input.fromEmail, ...input.toEmails]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
-  if (
-    haystack.includes("application") ||
-    haystack.includes("candidature") ||
-    haystack.includes("entretien") ||
-    haystack.includes("interview") ||
-    haystack.includes("thank you for applying")
-  ) {
-    return InboundEmailSignal.APPLICATION_UPDATE;
+function extractStoredLabelIds(rawPayload: unknown) {
+  if (!rawPayload || typeof rawPayload !== "object" || Array.isArray(rawPayload)) {
+    return [] as string[];
   }
 
-  if (
-    haystack.includes("linkedin") ||
-    haystack.includes("jobteaser") ||
-    haystack.includes("indeed") ||
-    haystack.includes("welcome to the jungle") ||
-    haystack.includes("job alert") ||
-    haystack.includes("alerte")
-  ) {
-    return InboundEmailSignal.JOB_ALERT;
+  const labelIds = (rawPayload as { labelIds?: unknown }).labelIds;
+
+  if (!Array.isArray(labelIds)) {
+    return [] as string[];
   }
 
-  if (
-    haystack.includes("greenhouse") ||
-    haystack.includes("workday") ||
-    haystack.includes("lever") ||
-    haystack.includes("ashby") ||
-    haystack.includes("career") ||
-    haystack.includes("careers")
-  ) {
-    return InboundEmailSignal.CAREER_SITE_DIGEST;
-  }
-
-  if (
-    haystack.includes("recruiter") ||
-    haystack.includes("talent") ||
-    haystack.includes("sourcing") ||
-    haystack.includes("hiring")
-  ) {
-    return InboundEmailSignal.RECRUITER_OUTREACH;
-  }
-
-  if (
-    haystack.includes("ecole") ||
-    haystack.includes("campus") ||
-    haystack.includes("forum") ||
-    haystack.includes("universit")
-  ) {
-    return InboundEmailSignal.SCHOOL_CAREER_DIGEST;
-  }
-
-  if (input.direction === MailboxMessageDirection.OUTBOUND) {
-    return InboundEmailSignal.APPLICATION_UPDATE;
-  }
-
-  return InboundEmailSignal.UNKNOWN;
-}
-
-function buildOpportunityCandidate(input: {
-  id: string;
-  signal: InboundEmailSignal;
-  subject: string | null;
-  snippet: string | null;
-  canonicalUrl: string | null;
-  receivedAt: Date;
-  fromEmail: string | null;
-  fromName: string | null;
-}): InboundEmailOpportunityCandidate {
-  return {
-    id: input.id,
-    signal: input.signal,
-    subject: input.subject,
-    snippet: input.snippet,
-    bodyPreview: input.snippet,
-    canonicalUrl: input.canonicalUrl,
-    receivedAt: input.receivedAt,
-    fromEmail: input.fromEmail,
-    fromName: input.fromName,
-  };
-}
-
-function inferProcessingStatus(input: {
-  direction: MailboxMessageDirection;
-  id: string;
-  signal: InboundEmailSignal;
-  subject: string | null;
-  snippet: string | null;
-  canonicalUrl: string | null;
-  receivedAt: Date;
-  fromEmail: string | null;
-  fromName: string | null;
-}) {
-  if (input.direction === MailboxMessageDirection.OUTBOUND) {
-    return InboundEmailStatus.IGNORED;
-  }
-
-  return parseInboundEmailOpportunity(buildOpportunityCandidate(input)).processingStatus;
+  return labelIds.filter((value): value is string => typeof value === "string");
 }
 
 function toTimestamp(message: GmailMessageDetail) {
@@ -310,9 +212,11 @@ export async function syncGmailMailbox(userId: string): Promise<GmailSyncResult>
       connection.syncCursor,
       syncQuery,
     );
+    const mailboxContext = await buildMailboxProfessionalContext(userId);
 
     let createdMessageCount = 0;
     let updatedMessageCount = 0;
+    let filteredOutMessageCount = 0;
 
     for (const messageId of messageIds) {
       const detail = await getGmailMessage(accessToken, messageId);
@@ -331,24 +235,27 @@ export async function syncGmailMailbox(userId: string): Promise<GmailSyncResult>
           ? MailboxMessageDirection.OUTBOUND
           : MailboxMessageDirection.INBOUND;
       const timestamp = toTimestamp(detail);
-      const signal = inferMailboxSignal({
-        direction,
-        subject,
-        snippet,
-        fromEmail: from.email,
-        toEmails,
-      });
-      const processingStatus = inferProcessingStatus({
-        direction,
-        id: detail.id,
-        signal,
-        subject,
-        snippet,
-        canonicalUrl,
-        receivedAt: timestamp,
-        fromEmail: from.email,
-        fromName: from.name,
-      });
+      const classification = classifyProfessionalMailboxMessage(
+        {
+          direction,
+          labelIds: detail.labelIds ?? [],
+          subject,
+          snippet,
+          fromEmail: from.email,
+          fromName: from.name,
+          toEmails,
+          ccEmails,
+          canonicalUrl,
+        },
+        mailboxContext,
+      );
+      const signal = classification.signal;
+      const processingStatus = classification.processingStatus;
+
+      if (!classification.isProfessional) {
+        filteredOutMessageCount += 1;
+        continue;
+      }
 
       const existing = await db.mailboxMessage.findUnique({
         where: {
@@ -388,6 +295,10 @@ export async function syncGmailMailbox(userId: string): Promise<GmailSyncResult>
           rawPayload: {
             labelIds: detail.labelIds ?? [],
             headers: detail.payload?.headers ?? [],
+            classification: {
+              professionalScore: classification.professionalScore,
+              reasons: classification.reasons,
+            },
           },
         },
         create: {
@@ -412,6 +323,10 @@ export async function syncGmailMailbox(userId: string): Promise<GmailSyncResult>
           rawPayload: {
             labelIds: detail.labelIds ?? [],
             headers: detail.payload?.headers ?? [],
+            classification: {
+              professionalScore: classification.professionalScore,
+              reasons: classification.reasons,
+            },
           },
         },
       });
@@ -421,6 +336,77 @@ export async function syncGmailMailbox(userId: string): Promise<GmailSyncResult>
       } else {
         createdMessageCount += 1;
       }
+    }
+
+    const storedMessages = await db.mailboxMessage.findMany({
+      where: {
+        userId,
+        connectionId: connection.id,
+      },
+      select: {
+        id: true,
+        direction: true,
+        subject: true,
+        snippet: true,
+        fromEmail: true,
+        fromName: true,
+        toEmails: true,
+        ccEmails: true,
+        canonicalUrl: true,
+        rawPayload: true,
+      },
+      take: 250,
+      orderBy: [
+        {
+          receivedAt: "desc",
+        },
+        {
+          sentAt: "desc",
+        },
+        {
+          createdAt: "desc",
+        },
+      ],
+    });
+
+    const staleMessageIds = storedMessages
+      .filter((message) => {
+        const classification = classifyProfessionalMailboxMessage(
+          {
+            direction: message.direction,
+            labelIds: extractStoredLabelIds(message.rawPayload),
+            subject: message.subject,
+            snippet: message.snippet,
+            fromEmail: message.fromEmail,
+            fromName: message.fromName,
+            toEmails: Array.isArray(message.toEmails)
+              ? message.toEmails.filter(
+                  (value): value is string => typeof value === "string",
+                )
+              : [],
+            ccEmails: Array.isArray(message.ccEmails)
+              ? message.ccEmails.filter(
+                  (value): value is string => typeof value === "string",
+                )
+              : [],
+            canonicalUrl: message.canonicalUrl,
+          },
+          mailboxContext,
+        );
+
+        return !classification.isProfessional;
+      })
+      .map((message) => message.id);
+
+    if (staleMessageIds.length > 0) {
+      await db.mailboxMessage.deleteMany({
+        where: {
+          id: {
+            in: staleMessageIds,
+          },
+        },
+      });
+      filteredOutMessageCount += staleMessageIds.length;
     }
 
     const replyDetection = await recomputeOfferMailboxSignals(userId);
@@ -450,6 +436,7 @@ export async function syncGmailMailbox(userId: string): Promise<GmailSyncResult>
         processedMessageCount: messageIds.length,
         createdMessageCount,
         updatedMessageCount,
+        filteredOutMessageCount,
         detectedReplyCount: replyDetection.detectedReplyCount,
       },
     });
@@ -459,6 +446,7 @@ export async function syncGmailMailbox(userId: string): Promise<GmailSyncResult>
       processedMessageCount: messageIds.length,
       createdMessageCount,
       updatedMessageCount,
+      filteredOutMessageCount,
       detectedReplyCount: replyDetection.detectedReplyCount,
       usedHistoryCursor,
       snapshot,
