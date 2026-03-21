@@ -2,7 +2,16 @@ import { DraftStatus } from "@prisma/client";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
+import {
+  ensureGmailConnectionAccess,
+  GmailMailboxError,
+} from "@/lib/email/gmail-connection";
 import { buildOfferGeminiContext } from "@/lib/email/gemini-offer-context";
+import {
+  GOOGLE_OAUTH_SCOPES,
+  createGmailDraft,
+  sendGmailMessage,
+} from "@/lib/email/google";
 import {
   buildOfferEmailPersonalizationPrompt,
   type OfferEmailPersonalizationPrompt,
@@ -14,6 +23,24 @@ const generatedDraftSchema = z.object({
   body: z.string().trim().min(80).max(4000),
 });
 
+const updateDraftSchema = z.object({
+  recipientEmail: z
+    .union([z.string().trim().email(), z.literal(""), z.null(), z.undefined()])
+    .transform((value) => (value ? value : null)),
+  subject: z.string().trim().min(6).max(160),
+  body: z.string().trim().min(80).max(4000),
+});
+
+const draftDeliveryInputSchema = z
+  .object({
+    recipientEmail: z
+      .union([z.string().trim().email(), z.literal(""), z.null(), z.undefined()])
+      .transform((value) => (value ? value : null)),
+  })
+  .default({
+    recipientEmail: null,
+  });
+
 export type GeneratedEmailDraft = z.infer<typeof generatedDraftSchema> & {
   draftId: string;
   provider: "gemini" | "fallback";
@@ -21,18 +48,18 @@ export type GeneratedEmailDraft = z.infer<typeof generatedDraftSchema> & {
   personalizationSummary: string;
 };
 
-const updateDraftSchema = z.object({
-  subject: z.string().trim().min(6).max(160),
-  body: z.string().trim().min(80).max(4000),
-});
-
 export type EmailDraftListItem = {
   id: string;
   status: DraftStatus;
+  recipientEmail: string | null;
   subject: string | null;
   body: string;
   personalizationSummary: string | null;
   generatedBy: string | null;
+  deliveryProvider: string | null;
+  gmailDraftId: string | null;
+  gmailMessageId: string | null;
+  gmailThreadId: string | null;
   updatedAt: string;
   jobOffer: {
     id: string;
@@ -60,6 +87,55 @@ export class EmailDraftUpdateError extends Error {
     super(message);
     this.name = "EmailDraftUpdateError";
   }
+}
+
+export class EmailDraftDeliveryError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "EmailDraftDeliveryError";
+  }
+}
+
+type DraftSelectPayload = {
+  id: string;
+  status: DraftStatus;
+  recipientEmail: string | null;
+  subject: string | null;
+  body: string;
+  personalizationSummary: string | null;
+  generatedBy: string | null;
+  deliveryProvider: string | null;
+  gmailDraftId: string | null;
+  gmailMessageId: string | null;
+  gmailThreadId: string | null;
+  updatedAt: Date;
+  jobOffer: {
+    id: string;
+    title: string;
+    companyName: string;
+    sourceUrl: string;
+  } | null;
+};
+
+function toListItem(draft: DraftSelectPayload): EmailDraftListItem {
+  return {
+    id: draft.id,
+    status: draft.status,
+    recipientEmail: draft.recipientEmail,
+    subject: draft.subject,
+    body: draft.body,
+    personalizationSummary: draft.personalizationSummary,
+    generatedBy: draft.generatedBy,
+    deliveryProvider: draft.deliveryProvider,
+    gmailDraftId: draft.gmailDraftId,
+    gmailMessageId: draft.gmailMessageId,
+    gmailThreadId: draft.gmailThreadId,
+    updatedAt: draft.updatedAt.toISOString(),
+    jobOffer: draft.jobOffer,
+  };
 }
 
 function getGeminiApiKey() {
@@ -167,6 +243,163 @@ async function generateDraftWithGemini(prompt: OfferEmailPersonalizationPrompt, 
   };
 }
 
+async function getSuggestedRecipientEmail(userId: string, jobOfferId: string | null) {
+  if (!jobOfferId) {
+    return null;
+  }
+
+  const suggestion = await db.offerMailboxSignal.findFirst({
+    where: {
+      userId,
+      jobOfferId,
+    },
+    orderBy: {
+      detectedAt: "desc",
+    },
+    select: {
+      mailboxMessage: {
+        select: {
+          fromEmail: true,
+          toEmails: true,
+        },
+      },
+    },
+  });
+
+  if (suggestion?.mailboxMessage?.fromEmail) {
+    return suggestion.mailboxMessage.fromEmail;
+  }
+
+  if (Array.isArray(suggestion?.mailboxMessage?.toEmails)) {
+    const candidate = suggestion.mailboxMessage.toEmails.find(
+      (value): value is string => typeof value === "string" && value.includes("@"),
+    );
+
+    return candidate ?? null;
+  }
+
+  return null;
+}
+
+async function getDraftForListItem(userId: string, draftId: string) {
+  const draft = await db.emailDraft.findFirst({
+    where: {
+      id: draftId,
+      userId,
+    },
+    select: {
+      id: true,
+      status: true,
+      recipientEmail: true,
+      subject: true,
+      body: true,
+      personalizationSummary: true,
+      generatedBy: true,
+      deliveryProvider: true,
+      gmailDraftId: true,
+      gmailMessageId: true,
+      gmailThreadId: true,
+      updatedAt: true,
+      jobOffer: {
+        select: {
+          id: true,
+          title: true,
+          companyName: true,
+          sourceUrl: true,
+        },
+      },
+    },
+  });
+
+  if (!draft) {
+    throw new EmailDraftDeliveryError("Draft not found", 404);
+  }
+
+  return toListItem(draft);
+}
+
+type OwnedDraft = {
+  id: string;
+  jobOfferId: string | null;
+  status: DraftStatus;
+  recipientEmail: string | null;
+  subject: string | null;
+  body: string;
+  gmailThreadId: string | null;
+};
+
+async function getOwnedDraft(userId: string, draftId: string): Promise<OwnedDraft> {
+  const draft = await db.emailDraft.findFirst({
+    where: {
+      id: draftId,
+      userId,
+    },
+    select: {
+      id: true,
+      jobOfferId: true,
+      status: true,
+      recipientEmail: true,
+      subject: true,
+      body: true,
+      gmailThreadId: true,
+    },
+  });
+
+  if (!draft) {
+    throw new EmailDraftDeliveryError("Draft not found", 404);
+  }
+
+  return draft;
+}
+
+async function resolveDraftDeliveryContext(
+  userId: string,
+  draft: OwnedDraft,
+  requestedRecipientEmail: string | null | undefined,
+) {
+  const recipientEmail =
+    requestedRecipientEmail?.trim() ||
+    draft.recipientEmail ||
+    (await getSuggestedRecipientEmail(userId, draft.jobOfferId));
+
+  if (!recipientEmail) {
+    throw new EmailDraftDeliveryError(
+      "Recipient email is required before creating or sending a Gmail draft",
+      400,
+    );
+  }
+
+  if (!draft.subject) {
+    throw new EmailDraftDeliveryError("Draft subject is required", 400);
+  }
+
+  let gmailThreadId = draft.gmailThreadId;
+
+  if (!gmailThreadId && draft.jobOfferId) {
+    const signal = await db.offerMailboxSignal.findFirst({
+      where: {
+        userId,
+        jobOfferId: draft.jobOfferId,
+      },
+      orderBy: {
+        detectedAt: "desc",
+      },
+      select: {
+        providerThreadId: true,
+      },
+    });
+
+    gmailThreadId = signal?.providerThreadId ?? null;
+  }
+
+  return {
+    recipientEmail,
+    subject: draft.subject,
+    body: draft.body,
+    gmailThreadId,
+  };
+}
+
 export async function generateOfferEmailDraft(
   userId: string,
   jobOfferId: string,
@@ -203,12 +436,14 @@ export async function generateOfferEmailDraft(
     prompt,
     context.signals.matchExplanation,
   );
+  const recipientEmail = await getSuggestedRecipientEmail(userId, jobOfferId);
 
   const savedDraft = await db.emailDraft.create({
     data: {
       userId,
       jobOfferId,
       status: DraftStatus.DRAFT,
+      recipientEmail,
       subject: draft.subject,
       body: draft.body,
       personalizationSummary,
@@ -245,10 +480,15 @@ export async function listEmailDraftsForUser(userId: string): Promise<EmailDraft
     select: {
       id: true,
       status: true,
+      recipientEmail: true,
       subject: true,
       body: true,
       personalizationSummary: true,
       generatedBy: true,
+      deliveryProvider: true,
+      gmailDraftId: true,
+      gmailMessageId: true,
+      gmailThreadId: true,
       updatedAt: true,
       jobOffer: {
         select: {
@@ -261,16 +501,7 @@ export async function listEmailDraftsForUser(userId: string): Promise<EmailDraft
     },
   });
 
-  return drafts.map((draft) => ({
-    id: draft.id,
-    status: draft.status,
-    subject: draft.subject,
-    body: draft.body,
-    personalizationSummary: draft.personalizationSummary,
-    generatedBy: draft.generatedBy,
-    updatedAt: draft.updatedAt.toISOString(),
-    jobOffer: draft.jobOffer,
-  }));
+  return drafts.map((draft) => toListItem(draft));
 }
 
 export async function updateEmailDraft(
@@ -303,6 +534,7 @@ export async function updateEmailDraft(
       id: draftId,
     },
     data: {
+      recipientEmail: parsed.data.recipientEmail ?? undefined,
       subject: parsed.data.subject,
       body: parsed.data.body,
       status: DraftStatus.READY_FOR_REVIEW,
@@ -310,10 +542,15 @@ export async function updateEmailDraft(
     select: {
       id: true,
       status: true,
+      recipientEmail: true,
       subject: true,
       body: true,
       personalizationSummary: true,
       generatedBy: true,
+      deliveryProvider: true,
+      gmailDraftId: true,
+      gmailMessageId: true,
+      gmailThreadId: true,
       updatedAt: true,
       jobOffer: {
         select: {
@@ -326,14 +563,117 @@ export async function updateEmailDraft(
     },
   });
 
-  return {
-    id: draft.id,
-    status: draft.status,
-    subject: draft.subject,
-    body: draft.body,
-    personalizationSummary: draft.personalizationSummary,
-    generatedBy: draft.generatedBy,
-    updatedAt: draft.updatedAt.toISOString(),
-    jobOffer: draft.jobOffer,
-  };
+  return toListItem(draft);
+}
+
+export async function createGmailDraftFromEmailDraft(
+  userId: string,
+  draftId: string,
+  input: unknown,
+) {
+  const parsed = draftDeliveryInputSchema.safeParse(input);
+
+  if (!parsed.success) {
+    throw new EmailDraftDeliveryError("Invalid Gmail draft payload", 400);
+  }
+
+  const draft = await getOwnedDraft(userId, draftId);
+  const deliveryContext = await resolveDraftDeliveryContext(
+    userId,
+    draft,
+    parsed.data.recipientEmail,
+  );
+
+  try {
+    const { accessToken } = await ensureGmailConnectionAccess({
+      userId,
+      requiredScopes: [...GOOGLE_OAUTH_SCOPES.compose],
+    });
+    const gmailDraft = await createGmailDraft({
+      accessToken,
+      to: deliveryContext.recipientEmail,
+      subject: deliveryContext.subject,
+      body: deliveryContext.body,
+      threadId: deliveryContext.gmailThreadId,
+    });
+
+    await db.emailDraft.update({
+      where: {
+        id: draft.id,
+      },
+      data: {
+        recipientEmail: deliveryContext.recipientEmail,
+        status: DraftStatus.APPROVED,
+        approvedAt: new Date(),
+        deliveryProvider: "gmail",
+        gmailDraftId: gmailDraft.id ?? null,
+        gmailMessageId: gmailDraft.message?.id ?? null,
+        gmailThreadId: gmailDraft.message?.threadId ?? deliveryContext.gmailThreadId,
+      },
+    });
+  } catch (error) {
+    if (error instanceof GmailMailboxError) {
+      throw new EmailDraftDeliveryError(error.message, error.status);
+    }
+
+    throw error;
+  }
+
+  return getDraftForListItem(userId, draft.id);
+}
+
+export async function sendEmailDraftWithGmail(
+  userId: string,
+  draftId: string,
+  input: unknown,
+) {
+  const parsed = draftDeliveryInputSchema.safeParse(input);
+
+  if (!parsed.success) {
+    throw new EmailDraftDeliveryError("Invalid Gmail send payload", 400);
+  }
+
+  const draft = await getOwnedDraft(userId, draftId);
+  const deliveryContext = await resolveDraftDeliveryContext(
+    userId,
+    draft,
+    parsed.data.recipientEmail,
+  );
+
+  try {
+    const { accessToken } = await ensureGmailConnectionAccess({
+      userId,
+      requiredScopes: [...GOOGLE_OAUTH_SCOPES.compose],
+    });
+    const sent = await sendGmailMessage({
+      accessToken,
+      to: deliveryContext.recipientEmail,
+      subject: deliveryContext.subject,
+      body: deliveryContext.body,
+      threadId: deliveryContext.gmailThreadId,
+    });
+
+    await db.emailDraft.update({
+      where: {
+        id: draft.id,
+      },
+      data: {
+        recipientEmail: deliveryContext.recipientEmail,
+        status: DraftStatus.SENT,
+        approvedAt: draft.status === DraftStatus.APPROVED ? undefined : new Date(),
+        sentAt: new Date(),
+        deliveryProvider: "gmail",
+        gmailMessageId: sent.id ?? null,
+        gmailThreadId: sent.threadId ?? deliveryContext.gmailThreadId,
+      },
+    });
+  } catch (error) {
+    if (error instanceof GmailMailboxError) {
+      throw new EmailDraftDeliveryError(error.message, error.status);
+    }
+
+    throw error;
+  }
+
+  return getDraftForListItem(userId, draft.id);
 }

@@ -421,55 +421,6 @@ export function PreferencesForm({ initialPayload, initialDomains }: Props) {
         ) : null}
       </section>
 
-      <section className="space-y-4">
-        <div>
-          <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-            Parametrage recherche
-          </p>
-          <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
-            Postes et marche cibles
-          </h2>
-        </div>
-
-        <label className="space-y-2">
-          <span className="block text-sm font-medium text-foreground">Roles cibles</span>
-          <textarea
-            value={payload.targetRoles}
-            onChange={(event) => updateField("targetRoles", event.target.value)}
-            rows={4}
-            className="w-full rounded-[1.5rem] border border-line bg-white/80 px-4 py-3 outline-none transition focus:border-slate-900"
-            placeholder="Backend engineer intern, software engineer..."
-          />
-        </label>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="space-y-2">
-            <span className="block text-sm font-medium text-foreground">
-              Mots cles de recherche
-            </span>
-            <textarea
-              value={payload.searchKeywords}
-              onChange={(event) => updateField("searchKeywords", event.target.value)}
-              rows={4}
-              className="w-full rounded-[1.5rem] border border-line bg-white/80 px-4 py-3 outline-none transition focus:border-slate-900"
-              placeholder="automation, backend, api, typescript..."
-            />
-          </label>
-          <label className="space-y-2">
-            <span className="block text-sm font-medium text-foreground">
-              Localisations preferees
-            </span>
-            <textarea
-              value={payload.preferredLocations}
-              onChange={(event) => updateField("preferredLocations", event.target.value)}
-              rows={4}
-              className="w-full rounded-[1.5rem] border border-line bg-white/80 px-4 py-3 outline-none transition focus:border-slate-900"
-              placeholder="Paris, Saclay, Bruxelles..."
-            />
-          </label>
-        </div>
-      </section>
-
       <section className="space-y-4 rounded-[1.5rem] border border-line bg-white/60 p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">

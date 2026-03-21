@@ -29,22 +29,8 @@ export default async function ProfileManagementPage() {
           Gestion du profil
         </p>
         <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-foreground md:text-6xl">
-          Centralise le profil, les preferences et les domaines utiles.
+          Modifie ton profil, tes preferences et tes domaines d&apos;action.
         </h1>
-        <p className="app-copy mt-4 max-w-3xl">
-          Depuis cet espace, tu ouvres le profil complet, ajustes le ciblage de
-          recherche et gardes un oeil sur les domaines valides sans surcharger la
-          navigation principale.
-        </p>
-        <div className="status-row mt-6">
-          <div className="status-pill">1 point d entree pour le profil</div>
-          <div className="status-pill status-pill-info">
-            Preferences separees du parcours
-          </div>
-          <div className="status-pill status-pill-success">
-            Domaines valides visibles sans ecran en plus
-          </div>
-        </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
@@ -83,7 +69,7 @@ export default async function ProfileManagementPage() {
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/workspace/preferences"
-              className="inline-flex items-center justify-center rounded-full border border-line px-5 py-3 text-sm font-medium text-foreground transition hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center rounded-full bg-foreground px-5 py-3 text-sm font-medium text-white transition hover:-translate-y-0.5"
             >
               Modifier les preferences
             </Link>
@@ -105,7 +91,7 @@ export default async function ProfileManagementPage() {
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/workspace/preferences"
-              className="inline-flex items-center justify-center rounded-full border border-line px-5 py-3 text-sm font-medium text-foreground transition hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center rounded-full bg-foreground px-5 py-3 text-sm font-medium text-white transition hover:-translate-y-0.5"
             >
               Modifier les domaines
             </Link>

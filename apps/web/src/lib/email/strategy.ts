@@ -48,7 +48,7 @@ export const emailIngestionStrategySchema = z.object({
     storesRawEmailByDefault: z.boolean(),
   }),
   supportedSources: z.array(emailIngestionSourceSchema).min(3).max(3),
-  nextTasks: z.array(z.number().int().positive()).min(2).max(5),
+  nextTasks: z.array(z.number().int().positive()).min(2).max(12),
 });
 
 export type EmailIngestionStrategy = z.output<typeof emailIngestionStrategySchema>;
@@ -57,22 +57,23 @@ export function getEmailIngestionStrategy(): EmailIngestionStrategy {
   return emailIngestionStrategySchema.parse({
     generatedAt: new Date().toISOString(),
     summary:
-      "Les emails sont une source complementaire a la collecte web: il faut privilegier un acces lecture seule, limiter le perimetre aux alertes emploi et supporter Gmail, Outlook puis un forwarding vers une boite dediee.",
+      "La cible produit devient Gmail en lecture ciblee pour suivre les reponses de candidatures et centraliser les alertes. Le forwarding reste un fallback pour les utilisateurs qui refusent OAuth, puis la creation de brouillons et l envoi Gmail viennent ensuite.",
     ingestionOrder: ["gmail", "outlook", "forwarding"],
     designPrinciples: [
       "Traiter les emails comme une source secondaire de fraicheur et de couverture, jamais comme la seule source d offres.",
-      "Demander le minimum de permissions necessaires et rester en lecture seule tant que l utilisateur ne demande pas plus.",
-      "Limiter l ingestion aux labels, dossiers ou boites dediees aux alertes emploi pour eviter de lire des emails personnels.",
-      "Extraire d abord des opportunites structurees et des liens, pas la totalite du contenu brut des boites mail.",
+      "Demander le minimum de permissions necessaires et rester en lecture seule tant que l utilisateur ne demande pas la creation de brouillons ou l envoi.",
+      "Preferer une lecture ciblee par label ou requete Gmail afin d eviter un scan large de la boite personnelle.",
+      "Reconstruire les conversations et reponses depuis la boite synchronisee, meme si le mail initial n a pas ete emis depuis l application.",
+      "Extraire d abord des messages synchronises, des statuts de candidature et des opportunites structurees plutot que de conserver le contenu brut complet.",
       "Conserver un chemin sans OAuth via forwarding pour les utilisateurs qui ne veulent pas connecter leur messagerie principale.",
     ],
     securityRules: [
-      "Aucune permission d envoi d email ne doit etre demandee pour l ingestion des alertes.",
+      "La lecture Gmail reste separee de la creation de brouillons et de l envoi d email via des scopes demandes au bon moment.",
       "Aucune suppression, archivage ou modification de message ne doit etre faite par defaut.",
       "Le produit doit permettre un revocation simple du connecteur et l arret immediat des synchronisations.",
-      "Les emails bruts ne doivent pas etre conserves par defaut; seuls les metadonnees et extraits utiles sont stockes.",
+      "Les emails bruts ne doivent pas etre conserves par defaut; seuls les metadonnees, extraits et signaux utiles sont stockes.",
       "Les pieces jointes ne sont pas telechargees automatiquement au MVP, sauf evolution explicite du backlog.",
-      "Les messages sont dedupliques par `message-id`, expediteur, sujet normalise et URL d offre canonique quand elle existe.",
+      "Les messages synchronises sont dedupliques par identifiant provider, thread, sujet normalise et URL canonique quand elle existe.",
     ],
     parsingSignals: [
       "job_alert",
@@ -94,11 +95,11 @@ export function getEmailIngestionStrategy(): EmailIngestionStrategy {
         priority: 1,
         connectionMode: "oauth",
         trustBoundary: "user_mailbox",
-        implementationStatus: "planned",
+        implementationStatus: "partial",
         recommendedUseCases: [
-          "Utilisateur qui centralise ses job alerts dans un label Gmail dedie",
-          "Reception d alertes LinkedIn, Welcome to the Jungle, JobTeaser ou ATS entreprise",
-          "Reception de messages recruteurs ou campus dans une boite deja organisee",
+          "Utilisateur qui veut suivre les reponses a ses candidatures meme si le mail initial est parti hors application",
+          "Reception d alertes LinkedIn, Welcome to the Jungle, JobTeaser ou ATS entreprise dans Gmail",
+          "Centralisation des messages recruteurs, RH et campus dans une boite ou un label deja organise",
         ],
         supportedSignals: [
           "job_alert",
@@ -113,13 +114,27 @@ export function getEmailIngestionStrategy(): EmailIngestionStrategy {
             label: "Lecture seule de Gmail",
             scope: "https://www.googleapis.com/auth/gmail.readonly",
             required: true,
-            reason: "Lire les sujets, expediteurs, dates, extraits et liens des emails d opportunites.",
+            reason: "Lire les sujets, expediteurs, dates, extraits, threads et liens utiles des emails de candidature et d opportunite.",
+          },
+          {
+            id: "gmail.compose",
+            label: "Creation de brouillons Gmail",
+            scope: "https://www.googleapis.com/auth/gmail.compose",
+            required: false,
+            reason: "Permettre plus tard la creation de brouillons dans la boite de l utilisateur depuis une offre retenue.",
+          },
+          {
+            id: "gmail.send",
+            label: "Envoi Gmail",
+            scope: "https://www.googleapis.com/auth/gmail.send",
+            required: false,
+            reason: "Permettre plus tard l envoi explicite d un email valide depuis l interface apres validation humaine.",
           },
         ],
         constraints: [
-          "Cibler en priorite un label dedie du type `jobs`, `internships` ou `career-alerts`.",
-          "Ne pas demander `gmail.modify` ni `gmail.send` au MVP.",
-          "Utiliser Gmail en lecture seule et filtrer les messages avant tout parsing detaille.",
+          "Cibler en priorite un label dedie du type `jobs`, `internships` ou `career-alerts`, ou une requete Gmail definie par l utilisateur.",
+          "La lecture seule doit suffire pour la detection des reponses et le suivi des conversations au MVP.",
+          "Les scopes `gmail.compose` et `gmail.send` ne doivent etre demandes qu au moment ou les brouillons et l envoi sont reellement actives.",
         ],
       },
       {
@@ -175,7 +190,7 @@ export function getEmailIngestionStrategy(): EmailIngestionStrategy {
         priority: 3,
         connectionMode: "forwarding",
         trustBoundary: "dedicated_inbox",
-        implementationStatus: "planned",
+        implementationStatus: "ready",
         recommendedUseCases: [
           "Utilisateur qui ne veut pas connecter sa boite principale en OAuth",
           "Centralisation manuelle d alertes de plusieurs sources vers une adresse reservee au projet",
@@ -203,6 +218,6 @@ export function getEmailIngestionStrategy(): EmailIngestionStrategy {
         ],
       },
     ],
-    nextTasks: [249, 252, 250],
+    nextTasks: [710, 720, 730, 740, 750, 760, 770, 780, 790, 795],
   });
 }

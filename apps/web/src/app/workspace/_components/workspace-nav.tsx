@@ -28,48 +28,31 @@ const primaryItems: NavItem[] = [
   {
     href: "/workspace/profile",
     label: "Gestion de profil",
-    description: "Profil, preferences et domaines",
+    description: "Profil, préférences et domaines",
     shortLabel: "GP",
   },
 ];
 
 const secondaryGroups = [
   {
-    title: "Profil",
-    items: [
-      {
-        href: "/workspace/onboarding",
-        label: "Profil complet",
-        description: "Identite, parcours et contraintes",
-        shortLabel: "PC",
-      },
-      {
-        href: "/workspace/preferences",
-        label: "Preferences",
-        description: "Roles, zones et domaines",
-        shortLabel: "PR",
-      },
-    ],
-  },
-  {
     title: "Recherche",
     items: [
       {
         href: "/workspace/search",
-        label: "Collecte d offres",
+        label: "Collecte d'offres",
         description: "Sources publiques et scoring",
         shortLabel: "CO",
       },
       {
         href: "/workspace/email",
-        label: "Ingestion email",
-        description: "Forwarding et messages recus",
+        label: "Messagerie Gmail",
+        description: "Boite, reponses et fallback email",
         shortLabel: "EM",
       },
       {
         href: "/workspace/drafts",
         label: "Brouillons",
-        description: "Relire et copier les emails generes",
+        description: "Relire et copier les emails générés",
         shortLabel: "BR",
       },
     ],
