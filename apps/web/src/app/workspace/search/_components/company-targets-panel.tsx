@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
+import { buildCompanyOffersHref } from "@/lib/company-targets/offers";
 import type { CareerSourceDiscoveryResult } from "@/lib/company-targets/discovery";
 import type { CompanyTargetSuggestionResult } from "@/lib/company-targets/suggestions";
 
@@ -10,6 +12,7 @@ type Props = {
 };
 
 export function CompanyTargetsPanel({ disabled }: Props) {
+  const router = useRouter();
   const [result, setResult] = useState<CompanyTargetSuggestionResult | null>(null);
   const [discoveryResult, setDiscoveryResult] = useState<CareerSourceDiscoveryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +79,28 @@ export function CompanyTargetsPanel({ disabled }: Props) {
   const discoveryIndex = new Map(
     (discoveryResult?.results ?? []).map((item) => [item.companyName, item]),
   );
+
+  function openCompanyOffersPage(options: {
+    companyName: string;
+    websiteUrl: string | null;
+    careerPageUrl: string | null;
+    atsProvider: string | null;
+    discoveryMethod: string | null;
+  }) {
+    if (!options.careerPageUrl) {
+      return;
+    }
+
+    router.push(
+      buildCompanyOffersHref({
+        companyName: options.companyName,
+        websiteUrl: options.websiteUrl,
+        careerPageUrl: options.careerPageUrl,
+        atsProvider: options.atsProvider,
+        discoveryMethod: options.discoveryMethod,
+      }),
+    );
+  }
 
   return (
     <section className="grid gap-6 xl:grid-cols-[0.82fr_1.18fr]">
@@ -172,11 +197,34 @@ export function CompanyTargetsPanel({ disabled }: Props) {
         {result?.suggestions.length ? (
           result.suggestions.map((suggestion) => {
             const discovery = discoveryIndex.get(suggestion.companyName);
+            const companyOffersPageUrl =
+              discovery?.careerPageUrl
+                ? buildCompanyOffersHref({
+                    companyName: suggestion.companyName,
+                    websiteUrl: suggestion.websiteUrl,
+                    careerPageUrl: discovery.careerPageUrl,
+                    atsProvider: discovery.atsProvider,
+                    discoveryMethod: discovery.discoveryMethod,
+                  })
+                : null;
 
             return (
               <article
                 key={suggestion.companyName}
-                className="rounded-[1.75rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)]"
+                onClick={() =>
+                  openCompanyOffersPage({
+                    companyName: suggestion.companyName,
+                    websiteUrl: suggestion.websiteUrl,
+                    careerPageUrl: discovery?.careerPageUrl ?? null,
+                    atsProvider: discovery?.atsProvider ?? null,
+                    discoveryMethod: discovery?.discoveryMethod ?? null,
+                  })
+                }
+                className={
+                  discovery?.careerPageUrl
+                    ? "rounded-[1.75rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_24px_55px_rgba(31,41,55,0.08)] cursor-pointer"
+                    : "rounded-[1.75rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)]"
+                }
               >
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="space-y-3">
@@ -197,6 +245,11 @@ export function CompanyTargetsPanel({ disabled }: Props) {
                     <p className="mt-2 text-sm text-muted">
                       Priorite suggeree: {suggestion.priority}/100
                     </p>
+                    {discovery?.careerPageUrl ? (
+                      <p className="mt-2 text-xs uppercase tracking-[0.14em] text-muted">
+                        Cliquer sur la carte pour voir les offres de l entreprise
+                      </p>
+                    ) : null}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-3">
@@ -205,6 +258,7 @@ export function CompanyTargetsPanel({ disabled }: Props) {
                       href={suggestion.websiteUrl}
                       target="_blank"
                       rel="noreferrer"
+                      onClick={(event) => event.stopPropagation()}
                       className="inline-flex items-center justify-center rounded-full border border-line px-4 py-2 text-sm font-medium text-foreground transition hover:-translate-y-0.5"
                     >
                       Site officiel
@@ -215,6 +269,7 @@ export function CompanyTargetsPanel({ disabled }: Props) {
                       href={suggestion.careerPageUrl}
                       target="_blank"
                       rel="noreferrer"
+                      onClick={(event) => event.stopPropagation()}
                       className="inline-flex items-center justify-center rounded-full bg-foreground px-4 py-2 text-sm font-medium text-white transition hover:-translate-y-0.5"
                     >
                       Page carriere
@@ -293,11 +348,24 @@ export function CompanyTargetsPanel({ disabled }: Props) {
                     </div>
                   </div>
                   {discovery.careerPageUrl ? (
-                    <div className="mt-4">
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      {companyOffersPageUrl ? (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            router.push(companyOffersPageUrl);
+                          }}
+                          className="inline-flex items-center justify-center rounded-full border border-line px-4 py-2 text-sm font-medium text-foreground transition hover:-translate-y-0.5"
+                        >
+                          Voir les offres
+                        </button>
+                      ) : null}
                       <a
                         href={discovery.careerPageUrl}
                         target="_blank"
                         rel="noreferrer"
+                        onClick={(event) => event.stopPropagation()}
                         className="inline-flex items-center justify-center rounded-full bg-foreground px-4 py-2 text-sm font-medium text-white transition hover:-translate-y-0.5"
                       >
                         Ouvrir le point d entree carriere

@@ -21,8 +21,6 @@ type ProfileDraft = {
   portfolioUrl: string;
   resumeUrl: string;
   visaNeedsSponsorship: boolean;
-  salaryExpectationMin: string;
-  salaryExpectationMax: string;
   skills: string;
   targetRoles: string;
   searchKeywords: string;
@@ -63,6 +61,7 @@ const employmentTypeOptions = [
   { value: "APPRENTICESHIP", label: "Alternance" },
   { value: "FULL_TIME", label: "CDI / temps plein" },
   { value: "PART_TIME", label: "Temps partiel" },
+  { value: "FREELANCE", label: "Freelance" },
 ];
 
 function createProfileSnapshotKey(profile: ProfileDraft) {
@@ -703,40 +702,6 @@ export function ProfileOnboardingForm({
               placeholder={fallbackPlaceholder(savedDraft.profile.resumeUrl, "https://...")}
             />
             <FieldErrorList messages={fieldErrors.resumeUrl} />
-          </label>
-          <label className="space-y-2">
-            <span className="block text-sm font-medium text-foreground">
-              Remuneration minimale
-            </span>
-            <input
-              value={profile.salaryExpectationMin}
-              onChange={(event) =>
-                updateProfile("salaryExpectationMin", event.target.value)
-              }
-              className="w-full rounded-2xl border border-line bg-white/80 px-4 py-3 outline-none transition focus:border-slate-900"
-              placeholder={fallbackPlaceholder(
-                savedDraft.profile.salaryExpectationMin,
-                "1200",
-              )}
-            />
-            <FieldErrorList messages={fieldErrors.salaryExpectationMin} />
-          </label>
-          <label className="space-y-2">
-            <span className="block text-sm font-medium text-foreground">
-              Remuneration cible haute
-            </span>
-            <input
-              value={profile.salaryExpectationMax}
-              onChange={(event) =>
-                updateProfile("salaryExpectationMax", event.target.value)
-              }
-              className="w-full rounded-2xl border border-line bg-white/80 px-4 py-3 outline-none transition focus:border-slate-900"
-              placeholder={fallbackPlaceholder(
-                savedDraft.profile.salaryExpectationMax,
-                "1800",
-              )}
-            />
-            <FieldErrorList messages={fieldErrors.salaryExpectationMax} />
           </label>
         </div>
 

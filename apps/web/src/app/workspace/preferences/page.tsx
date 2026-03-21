@@ -27,18 +27,8 @@ export default async function PreferencesPage() {
           Preferences de recherche
         </p>
         <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-foreground md:text-6xl">
-          Ajuste les roles, les zones et les domaines sans dupliquer le profil.
+         Roles, zone et domaine de recherche.
         </h1>
-        <p className="app-copy mt-4 max-w-3xl">
-          Les contraintes de candidature restent sur le profil complet. Cette page se
-          concentre sur les cibles de recherche et sur l edition directe des domaines
-          issus de Gemini.
-        </p>
-        <div className="status-row mt-6">
-          <div className="status-pill">Domaines modifiables sur une seule page</div>
-          <div className="status-pill status-pill-info">Generation Gemini relancable</div>
-          <div className="status-pill status-pill-success">Pas de duplication avec le profil</div>
-        </div>
       </section>
 
       <PreferencesForm

@@ -31,12 +31,6 @@ const primaryItems: NavItem[] = [
     description: "Profil, preferences et domaines",
     shortLabel: "GP",
   },
-  {
-    href: "/workspace/search",
-    label: "Recherche d offres",
-    description: "Collecte web et pistes email",
-    shortLabel: "RO",
-  },
 ];
 
 const secondaryGroups = [
@@ -134,25 +128,6 @@ function SidebarContent({
 }) {
   return (
     <div className="flex h-full flex-col rounded-[2rem] border border-line bg-card/95 p-4 shadow-[0_18px_45px_rgba(31,41,55,0.05)] backdrop-blur">
-      <div className="space-y-4 border-b border-line pb-5">
-        <Link
-          href="/"
-          onClick={onNavigate}
-          className="inline-flex items-center rounded-full border border-line px-4 py-2 font-mono text-[11px] uppercase tracking-[0.22em] text-muted transition hover:bg-white/80"
-        >
-          Retour page de garde
-        </Link>
-        <div className="surface-muted rounded-[1.5rem] p-4">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted">
-            Espace utilisateur
-          </p>
-          <p className="mt-3 text-base font-semibold text-foreground">
-            {fullName || "Utilisateur"}
-          </p>
-          <p className="mt-1 text-sm text-muted">{email}</p>
-        </div>
-      </div>
-
       <div className="mt-5 space-y-5">
         <div className="space-y-2">
           <p className="px-2 font-mono text-[11px] uppercase tracking-[0.22em] text-muted">

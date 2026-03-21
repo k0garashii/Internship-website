@@ -130,6 +130,12 @@ enum InboundEmailSignal {
   APPLICATION_UPDATE
 }
 
+enum ProfileEnrichmentStatus {
+  PENDING
+  READY
+  FAILED
+}
+
 model User {
   id               String                     @id @default(cuid())
   email            String                     @unique
@@ -149,6 +155,7 @@ model User {
   inboundEmails    InboundEmail[]
   jobOffers        JobOffer[]
   profile          UserProfile?
+  profileEnrichment UserProfileEnrichment?
   searchDomains    SearchDomain[]
   searchLocations  SearchLocation[]
   searchRuns       SearchRun[]
@@ -468,4 +475,20 @@ model InboundEmail {
   @@unique([connectionId, externalMessageId])
   @@index([userId, receivedAt])
   @@index([connectionId, processingStatus])
+}
+
+model UserProfileEnrichment {
+  id             String                  @id @default(cuid())
+  userId         String                  @unique
+  status         ProfileEnrichmentStatus @default(PENDING)
+  sourceSnapshot Json?
+  extractedData  Json?
+  summary        String?
+  lastError      String?
+  lastEnrichedAt DateTime?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, lastEnrichedAt])
 }
