@@ -1,4 +1,4 @@
-import { ProfileEnrichmentStatus } from "@prisma/client";
+import { Prisma, ProfileEnrichmentStatus } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { logServiceError } from "@/lib/observability/error-logging";
@@ -325,10 +325,20 @@ async function extractGithubSignals(url: string): Promise<ExtractionResult> {
 }
 
 async function parsePdfText(buffer: Buffer) {
-  const pdfParseModule = await import("pdf-parse");
-  const parse = (pdfParseModule.default ?? pdfParseModule) as (input: Buffer) => Promise<{ text: string }>;
-  const parsed = await parse(buffer);
-  return parsed.text ?? "";
+  const pdfParseModule = (await import("pdf-parse")) as {
+    PDFParse: new (input: { data: Buffer }) => {
+      getText: () => Promise<{ text?: string | null }>;
+      destroy: () => Promise<void>;
+    };
+  };
+  const parser = new pdfParseModule.PDFParse({ data: buffer });
+
+  try {
+    const parsed = await parser.getText();
+    return parsed.text ?? "";
+  } finally {
+    await parser.destroy();
+  }
 }
 
 async function extractResumeSignals(url: string): Promise<ExtractionResult> {
@@ -485,6 +495,10 @@ export async function refreshProfileEnrichment(userId: string) {
     sources: [portfolio.snapshot, github.snapshot, resume.snapshot],
     signals: mergedSignals,
   };
+  const sourceSnapshot = {
+    sources: payload.sources,
+  } as Prisma.InputJsonValue;
+  const extractedData = payload as Prisma.InputJsonValue;
 
   const summary =
     readySources.length > 0
@@ -500,10 +514,8 @@ export async function refreshProfileEnrichment(userId: string) {
         mergedSignals.length > 0 || failedSources.length < 3
           ? ProfileEnrichmentStatus.READY
           : ProfileEnrichmentStatus.FAILED,
-      sourceSnapshot: {
-        sources: payload.sources,
-      },
-      extractedData: payload,
+      sourceSnapshot,
+      extractedData,
       summary,
       lastError:
         failedSources.length > 0
@@ -517,10 +529,8 @@ export async function refreshProfileEnrichment(userId: string) {
         mergedSignals.length > 0 || failedSources.length < 3
           ? ProfileEnrichmentStatus.READY
           : ProfileEnrichmentStatus.FAILED,
-      sourceSnapshot: {
-        sources: payload.sources,
-      },
-      extractedData: payload,
+      sourceSnapshot,
+      extractedData,
       summary,
       lastError:
         failedSources.length > 0

@@ -137,30 +137,30 @@ enum ProfileEnrichmentStatus {
 }
 
 model User {
-  id               String                     @id @default(cuid())
-  email            String                     @unique
-  passwordHash     String?
-  fullName         String?
-  locale           String                     @default("fr-FR")
-  timezone         String                     @default("Europe/Paris")
-  status           UserStatus                 @default(ACTIVE)
-  emailVerifiedAt  DateTime?
-  createdAt        DateTime                   @default(now())
-  updatedAt        DateTime                   @updatedAt
-  accounts         AuthAccount[]
-  companyWatchlist CompanyWatchlistItem[]
-  drafts           EmailDraft[]
-  emailConnections EmailIngestionConnection[]
-  feedbackEntries  OfferFeedback[]
-  inboundEmails    InboundEmail[]
-  jobOffers        JobOffer[]
-  profile          UserProfile?
+  id                String                     @id @default(cuid())
+  email             String                     @unique
+  passwordHash      String?
+  fullName          String?
+  locale            String                     @default("fr-FR")
+  timezone          String                     @default("Europe/Paris")
+  status            UserStatus                 @default(ACTIVE)
+  emailVerifiedAt   DateTime?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  accounts          AuthAccount[]
+  companyWatchlist  CompanyWatchlistItem[]
+  drafts            EmailDraft[]
+  emailConnections  EmailIngestionConnection[]
+  feedbackEntries   OfferFeedback[]
+  inboundEmails     InboundEmail[]
+  jobOffers         JobOffer[]
+  profile           UserProfile?
   profileEnrichment UserProfileEnrichment?
-  searchDomains    SearchDomain[]
-  searchLocations  SearchLocation[]
-  searchRuns       SearchRun[]
-  searchTargets    SearchTarget[]
-  sessions         AuthSession[]
+  searchDomains     SearchDomain[]
+  searchLocations   SearchLocation[]
+  searchRuns        SearchRun[]
+  searchTargets     SearchTarget[]
+  sessions          AuthSession[]
 
   @@index([status])
 }

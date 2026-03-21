@@ -9,6 +9,8 @@ import {
 import { db } from "@/lib/db";
 import type { AuthenticatedViewer } from "@/lib/auth/viewer";
 import { assertAuthenticatedViewer } from "@/lib/auth/viewer";
+import { logServiceError } from "@/lib/observability/error-logging";
+import { refreshProfileEnrichment } from "@/lib/profile/enrichment";
 import {
   buildProfileConstraints,
   normalizeListItem,
@@ -241,6 +243,20 @@ export async function saveProfileOnboarding(
       });
     }
   });
+
+  try {
+    await refreshProfileEnrichment(authenticatedViewer.userId);
+  } catch (error) {
+    logServiceError({
+      level: "warn",
+      scope: "profile/onboarding",
+      message: "Profile enrichment refresh failed after onboarding save",
+      error,
+      metadata: {
+        userId: authenticatedViewer.userId,
+      },
+    });
+  }
 
   return {
     savedAt: new Date().toISOString(),
