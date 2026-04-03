@@ -14,6 +14,74 @@ enum UserStatus {
   PENDING_DELETION
 }
 
+enum WorkspaceType {
+  PERSONAL
+  TEAM
+}
+
+enum WorkspaceMemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+  BILLING
+}
+
+enum WorkspaceInvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+enum BillingProvider {
+  INTERNAL
+  STRIPE
+  LEMONSQUEEZY
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+  CUSTOM
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+}
+
+enum WorkspaceFeature {
+  SEARCH_DISCOVERY
+  EMAIL_DRAFT_GENERATION
+  EMAIL_GMAIL_SYNC
+  EMAIL_GMAIL_SEND
+  COMPANY_TARGETING
+  PROFILE_ENRICHMENT
+  API_ACCESS
+}
+
+enum EntitlementSource {
+  PLAN
+  OVERRIDE
+}
+
+enum AppJobType {
+  PROFILE_ENRICHMENT_REFRESH
+  SEARCH_DISCOVERY_RUN
+  GMAIL_SYNC
+}
+
+enum AppJobStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELED
+}
+
 enum ExperienceLevel {
   INTERN
   ENTRY_LEVEL
@@ -161,36 +229,251 @@ enum ProfileEnrichmentStatus {
   FAILED
 }
 
-model User {
-  id                String                     @id @default(cuid())
-  email             String                     @unique
-  passwordHash      String?
-  fullName          String?
-  locale            String                     @default("fr-FR")
-  timezone          String                     @default("Europe/Paris")
-  status            UserStatus                 @default(ACTIVE)
-  emailVerifiedAt   DateTime?
-  createdAt         DateTime                   @default(now())
-  updatedAt         DateTime                   @updatedAt
-  accounts          AuthAccount[]
-  companyWatchlist  CompanyWatchlistItem[]
-  drafts            EmailDraft[]
-  emailConnections  EmailIngestionConnection[]
-  feedbackEntries   OfferFeedback[]
-  emailDeliveryLogs EmailDeliveryLog[]
-  inboundEmails     InboundEmail[]
-  jobOffers         JobOffer[]
-  profile           UserProfile?
-  profileEnrichment UserProfileEnrichment?
-  mailboxSignals    OfferMailboxSignal[]
-  searchDomains     SearchDomain[]
-  searchLocations   SearchLocation[]
-  searchRuns        SearchRun[]
-  searchTargets     SearchTarget[]
-  sessions          AuthSession[]
-  mailboxMessages   MailboxMessage[]
+enum SearchPreferenceAxis {
+  ROLE
+  DOMAIN
+  KEYWORD
+  TECHNOLOGY
+  LOCATION
+  WORK_MODE
+  EMPLOYMENT_TYPE
+  COMPANY
+  COMPANY_TYPE
+  OUTCOME
+}
 
+enum SearchPreferencePolarity {
+  POSITIVE
+  NEGATIVE
+}
+
+enum SearchPreferenceConfidence {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum SearchSignalStrength {
+  WEAK
+  MEDIUM
+  STRONG
+  OUTCOME
+}
+
+enum SearchBehaviorEventType {
+  SEARCH_PLAN_VIEWED
+  SEARCH_EXECUTED
+  SEARCH_RESULT_OPENED
+  SEARCH_RESULT_EXPANDED
+  COMPANY_TARGET_OPENED
+  ATS_SOURCE_OPENED
+  OFFER_SAVED
+  OFFER_DELETED
+  OFFER_FEEDBACK_FAVORITE
+  OFFER_FEEDBACK_MAYBE
+  OFFER_FEEDBACK_NOT_RELEVANT
+  DRAFT_GENERATED
+  EMAIL_SENT
+  EMAIL_REPLY_RECEIVED
+  INTERVIEW_RECORDED
+  REJECTION_RECORDED
+  OFFER_ACCEPTED_RECORDED
+}
+
+model User {
+  id                       String                      @id @default(cuid())
+  email                    String                      @unique
+  passwordHash             String?
+  fullName                 String?
+  locale                   String                      @default("fr-FR")
+  timezone                 String                      @default("Europe/Paris")
+  status                   UserStatus                  @default(ACTIVE)
+  activeWorkspaceId        String?
+  emailVerifiedAt          DateTime?
+  createdAt                DateTime                    @default(now())
+  updatedAt                DateTime                    @updatedAt
+  activeWorkspace          Workspace?                  @relation("UserActiveWorkspace", fields: [activeWorkspaceId], references: [id], onDelete: SetNull)
+  accounts                 AuthAccount[]
+  billingEvents            BillingEvent[]              @relation("BillingActor")
+  companyWatchlist         CompanyWatchlistItem[]
+  drafts                   EmailDraft[]
+  emailConnections         EmailIngestionConnection[]
+  workspaceInvitationsSent WorkspaceInvitation[]       @relation("WorkspaceInvitationActor")
+  feedbackEntries          OfferFeedback[]
+  emailDeliveryLogs        EmailDeliveryLog[]
+  inboundEmails            InboundEmail[]
+  jobOffers                JobOffer[]
+  profile                  UserProfile?
+  profileEnrichment        UserProfileEnrichment?
+  mailboxSignals           OfferMailboxSignal[]
+  searchDomains            SearchDomain[]
+  searchLocations          SearchLocation[]
+  searchRuns               SearchRun[]
+  searchTargets            SearchTarget[]
+  sessions                 AuthSession[]
+  mailboxMessages          MailboxMessage[]
+  workspaceMembers         WorkspaceMember[]
+  workspacesCreated        Workspace[]                 @relation("WorkspaceCreator")
+  jobs                     AppJob[]
+  searchBehaviorEvents     SearchBehaviorEvent[]
+  searchProfileInference   UserSearchProfileInference?
+
+  @@index([activeWorkspaceId])
   @@index([status])
+}
+
+model Workspace {
+  id                      String                       @id @default(cuid())
+  slug                    String                       @unique
+  name                    String
+  type                    WorkspaceType                @default(PERSONAL)
+  createdByUserId         String?
+  personalOwnerUserId     String?                      @unique
+  defaultLocale           String                       @default("fr-FR")
+  defaultTimezone         String                       @default("Europe/Paris")
+  isArchived              Boolean                      @default(false)
+  createdAt               DateTime                     @default(now())
+  updatedAt               DateTime                     @updatedAt
+  createdBy               User?                        @relation("WorkspaceCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  activeForUsers          User[]                       @relation("UserActiveWorkspace")
+  members                 WorkspaceMember[]
+  invitations             WorkspaceInvitation[]
+  subscriptions           WorkspaceSubscription[]
+  entitlements            WorkspaceEntitlement[]
+  billingEvents           BillingEvent[]
+  jobs                    AppJob[]
+  userProfiles            UserProfile[]
+  companyWatchlist        CompanyWatchlistItem[]
+  searchDomains           SearchDomain[]
+  searchTargets           SearchTarget[]
+  searchLocations         SearchLocation[]
+  searchRuns              SearchRun[]
+  jobOffers               JobOffer[]
+  feedbackEntries         OfferFeedback[]
+  drafts                  EmailDraft[]
+  emailDeliveryLogs       EmailDeliveryLog[]
+  emailConnections        EmailIngestionConnection[]
+  inboundEmails           InboundEmail[]
+  mailboxMessages         MailboxMessage[]
+  mailboxSignals          OfferMailboxSignal[]
+  profileEnrichments      UserProfileEnrichment[]
+  searchBehaviorEvents    SearchBehaviorEvent[]
+  searchProfileInferences UserSearchProfileInference[]
+
+  @@index([createdByUserId])
+  @@index([isArchived])
+}
+
+model WorkspaceMember {
+  id          String              @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceMemberRole @default(MEMBER)
+  isDefault   Boolean             @default(false)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  workspace   Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId, role])
+}
+
+model WorkspaceInvitation {
+  id              String                    @id @default(cuid())
+  workspaceId     String
+  invitedByUserId String?
+  email           String
+  normalizedEmail String
+  role            WorkspaceMemberRole       @default(MEMBER)
+  token           String                    @unique
+  status          WorkspaceInvitationStatus @default(PENDING)
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+  workspace       Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedByUser   User?                     @relation("WorkspaceInvitationActor", fields: [invitedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([workspaceId, normalizedEmail, status])
+  @@index([workspaceId, status])
+}
+
+model Plan {
+  id                String                  @id @default(cuid())
+  code              String                  @unique
+  name              String
+  provider          BillingProvider         @default(INTERNAL)
+  billingInterval   BillingInterval         @default(MONTHLY)
+  priceCents        Int                     @default(0)
+  currency          String                  @default("EUR")
+  isDefault         Boolean                 @default(false)
+  featureMatrix     Json
+  externalProductId String?
+  externalPriceId   String?
+  isArchived        Boolean                 @default(false)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  subscriptions     WorkspaceSubscription[]
+
+  @@index([provider, isDefault])
+}
+
+model WorkspaceSubscription {
+  id                     String             @id @default(cuid())
+  workspaceId            String
+  planId                 String
+  provider               BillingProvider    @default(INTERNAL)
+  status                 SubscriptionStatus @default(ACTIVE)
+  externalSubscriptionId String?
+  seats                  Int                @default(1)
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  cancelAtPeriodEnd      Boolean            @default(false)
+  metadata               Json?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  workspace              Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  plan                   Plan               @relation(fields: [planId], references: [id], onDelete: Restrict)
+  billingEvents          BillingEvent[]
+
+  @@index([workspaceId, status])
+  @@index([planId])
+}
+
+model WorkspaceEntitlement {
+  id          String            @id @default(cuid())
+  workspaceId String
+  feature     WorkspaceFeature
+  source      EntitlementSource @default(OVERRIDE)
+  enabled     Boolean           @default(true)
+  limitValue  Int?
+  metadata    Json?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, feature])
+  @@index([workspaceId, enabled])
+}
+
+model BillingEvent {
+  id              String                 @id @default(cuid())
+  workspaceId     String
+  actorUserId     String?
+  subscriptionId  String?
+  provider        BillingProvider        @default(INTERNAL)
+  eventType       String
+  externalEventId String?
+  payload         Json?
+  createdAt       DateTime               @default(now())
+  workspace       Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actorUser       User?                  @relation("BillingActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  subscription    WorkspaceSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
+  @@index([subscriptionId])
 }
 
 model AuthAccount {
@@ -239,6 +522,7 @@ model VerificationToken {
 model UserProfile {
   id                   String           @id @default(cuid())
   userId               String           @unique
+  workspaceId          String?
   headline             String?
   summary              String?
   school               String?
@@ -261,6 +545,9 @@ model UserProfile {
   updatedAt            DateTime         @updatedAt
   skills               ProfileSkill[]
   user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace            Workspace?       @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId])
 }
 
 model ProfileSkill {
@@ -280,26 +567,30 @@ model ProfileSkill {
 }
 
 model CompanyWatchlistItem {
-  id             String   @id @default(cuid())
+  id             String     @id @default(cuid())
   userId         String
+  workspaceId    String?
   companyName    String
   normalizedName String
   websiteUrl     String?
   careerPageUrl  String?
   notes          String?
-  priority       Int      @default(50)
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  priority       Int        @default(50)
+  isActive       Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace      Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@unique([userId, normalizedName])
   @@index([userId, priority])
+  @@index([workspaceId])
 }
 
 model SearchDomain {
   id              String       @id @default(cuid())
   userId          String
+  workspaceId     String?
   label           String
   normalizedLabel String
   source          DomainSource @default(MANUAL)
@@ -309,14 +600,17 @@ model SearchDomain {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace       Workspace?   @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@unique([userId, normalizedLabel])
   @@index([userId, isValidated])
+  @@index([workspaceId])
 }
 
 model SearchTarget {
   id              String           @id @default(cuid())
   userId          String
+  workspaceId     String?
   title           String
   normalizedTitle String
   source          TargetSource     @default(MANUAL)
@@ -328,52 +622,62 @@ model SearchTarget {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace       Workspace?       @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@unique([userId, normalizedTitle])
   @@index([userId, priority])
+  @@index([workspaceId])
 }
 
 model SearchLocation {
-  id              String   @id @default(cuid())
+  id              String     @id @default(cuid())
   userId          String
+  workspaceId     String?
   label           String
   normalizedLabel String
   countryCode     String?
   region          String?
-  isRemote        Boolean  @default(false)
-  isHybrid        Boolean  @default(false)
-  priority        Int      @default(50)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isRemote        Boolean    @default(false)
+  isHybrid        Boolean    @default(false)
+  priority        Int        @default(50)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace       Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@unique([userId, normalizedLabel])
   @@index([userId, priority])
+  @@index([workspaceId])
 }
 
 model SearchRun {
-  id              String           @id @default(cuid())
+  id              String                @id @default(cuid())
   userId          String
+  workspaceId     String?
   label           String
   queryText       String?
-  status          SearchRunStatus  @default(PENDING)
+  status          SearchRunStatus       @default(PENDING)
   filtersSnapshot Json?
   startedAt       DateTime?
   completedAt     DateTime?
-  resultCount     Int              @default(0)
+  resultCount     Int                   @default(0)
   errorMessage    String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
   searchMatches   SearchRunOffer[]
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  behaviorEvents  SearchBehaviorEvent[]
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace       Workspace?            @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@index([userId, status])
   @@index([userId, createdAt])
+  @@index([workspaceId])
 }
 
 model JobOffer {
-  id              String               @id @default(cuid())
+  id              String                @id @default(cuid())
   userId          String
+  workspaceId     String?
   sourceKind      OfferSourceKind
   sourceSite      String
   sourceUrl       String
@@ -392,22 +696,25 @@ model JobOffer {
   currency        String?
   description     String?
   rawPayload      Json?
-  status          OfferLifecycleStatus @default(DISCOVERED)
+  status          OfferLifecycleStatus  @default(DISCOVERED)
   postedAt        DateTime?
-  firstSeenAt     DateTime             @default(now())
-  lastSeenAt      DateTime             @default(now())
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
+  firstSeenAt     DateTime              @default(now())
+  lastSeenAt      DateTime              @default(now())
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
   drafts          EmailDraft[]
   feedbackEntries OfferFeedback[]
   mailboxSignals  OfferMailboxSignal[]
   searchMatches   SearchRunOffer[]
-  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  behaviorEvents  SearchBehaviorEvent[]
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   mailboxMessages MailboxMessage[]
+  workspace       Workspace?            @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@unique([userId, fingerprint])
   @@index([userId, status])
   @@index([userId, postedAt])
+  @@index([workspaceId])
 }
 
 model SearchRunOffer {
@@ -428,25 +735,29 @@ model SearchRunOffer {
 }
 
 model OfferFeedback {
-  id         String           @id @default(cuid())
-  userId     String
-  jobOfferId String
-  decision   FeedbackDecision
-  note       String?
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
-  jobOffer   JobOffer         @relation(fields: [jobOfferId], references: [id], onDelete: Cascade)
-  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String           @id @default(cuid())
+  userId      String
+  workspaceId String?
+  jobOfferId  String
+  decision    FeedbackDecision
+  note        String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  jobOffer    JobOffer         @relation(fields: [jobOfferId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace?       @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
   @@index([jobOfferId, decision])
+  @@index([workspaceId])
 }
 
 model EmailDraft {
-  id                     String             @id @default(cuid())
+  id                     String                @id @default(cuid())
   userId                 String
+  workspaceId            String?
   jobOfferId             String?
-  status                 DraftStatus        @default(DRAFT)
+  status                 DraftStatus           @default(DRAFT)
   recipientEmail         String?
   subject                String?
   body                   String
@@ -459,19 +770,23 @@ model EmailDraft {
   contextSnapshot        Json?
   approvedAt             DateTime?
   sentAt                 DateTime?
-  createdAt              DateTime           @default(now())
-  updatedAt              DateTime           @updatedAt
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
   deliveryLogs           EmailDeliveryLog[]
-  jobOffer               JobOffer?          @relation(fields: [jobOfferId], references: [id], onDelete: SetNull)
-  user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  behaviorEvents         SearchBehaviorEvent[]
+  jobOffer               JobOffer?             @relation(fields: [jobOfferId], references: [id], onDelete: SetNull)
+  user                   User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace              Workspace?            @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@index([userId, status])
   @@index([jobOfferId])
+  @@index([workspaceId])
 }
 
 model EmailDeliveryLog {
   id                String                 @id @default(cuid())
   userId            String
+  workspaceId       String?
   emailDraftId      String?
   provider          String
   operation         EmailDeliveryOperation
@@ -488,14 +803,17 @@ model EmailDeliveryLog {
   updatedAt         DateTime               @updatedAt
   emailDraft        EmailDraft?            @relation(fields: [emailDraftId], references: [id], onDelete: SetNull)
   user              User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace         Workspace?             @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
   @@index([emailDraftId])
+  @@index([workspaceId])
 }
 
 model EmailIngestionConnection {
   id                  String                         @id @default(cuid())
   userId              String
+  workspaceId         String?
   authAccountId       String?
   sourceType          EmailIngestionSourceType
   label               String
@@ -516,16 +834,19 @@ model EmailIngestionConnection {
   inboundEmails       InboundEmail[]
   mailboxMessages     MailboxMessage[]
   user                User                           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace           Workspace?                     @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@unique([userId, sourceType])
   @@unique([forwardingLocalPart])
   @@index([authAccountId])
   @@index([userId, status])
+  @@index([workspaceId])
 }
 
 model InboundEmail {
   id                String                   @id @default(cuid())
   userId            String
+  workspaceId       String?
   connectionId      String
   externalMessageId String?
   fromEmail         String?
@@ -542,15 +863,18 @@ model InboundEmail {
   updatedAt         DateTime                 @updatedAt
   connection        EmailIngestionConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
   user              User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace         Workspace?               @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@unique([connectionId, externalMessageId])
   @@index([userId, receivedAt])
   @@index([connectionId, processingStatus])
+  @@index([workspaceId])
 }
 
 model MailboxMessage {
   id                String                   @id @default(cuid())
   userId            String
+  workspaceId       String?
   connectionId      String
   jobOfferId        String?
   providerMessageId String
@@ -575,7 +899,9 @@ model MailboxMessage {
   connection        EmailIngestionConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
   jobOffer          JobOffer?                @relation(fields: [jobOfferId], references: [id], onDelete: SetNull)
   replySignals      OfferMailboxSignal[]
+  behaviorEvents    SearchBehaviorEvent[]
   user              User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace         Workspace?               @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@unique([connectionId, providerMessageId])
   @@index([userId, providerThreadId])
@@ -583,11 +909,13 @@ model MailboxMessage {
   @@index([connectionId, sentAt])
   @@index([connectionId, receivedAt])
   @@index([connectionId, processingStatus])
+  @@index([workspaceId])
 }
 
 model OfferMailboxSignal {
   id               String             @id @default(cuid())
   userId           String
+  workspaceId      String?
   jobOfferId       String
   mailboxMessageId String?
   providerThreadId String?
@@ -601,15 +929,18 @@ model OfferMailboxSignal {
   jobOffer         JobOffer           @relation(fields: [jobOfferId], references: [id], onDelete: Cascade)
   mailboxMessage   MailboxMessage?    @relation(fields: [mailboxMessageId], references: [id], onDelete: SetNull)
   user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace        Workspace?         @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@unique([userId, jobOfferId])
   @@index([jobOfferId, status])
   @@index([userId, detectedAt])
+  @@index([workspaceId])
 }
 
 model UserProfileEnrichment {
   id             String                  @id @default(cuid())
   userId         String                  @unique
+  workspaceId    String?
   status         ProfileEnrichmentStatus @default(PENDING)
   sourceSnapshot Json?
   extractedData  Json?
@@ -619,6 +950,107 @@ model UserProfileEnrichment {
   createdAt      DateTime                @default(now())
   updatedAt      DateTime                @updatedAt
   user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace      Workspace?              @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@index([status, lastEnrichedAt])
+  @@index([workspaceId])
+}
+
+model SearchBehaviorEvent {
+  id               String                  @id @default(cuid())
+  userId           String
+  workspaceId      String?
+  type             SearchBehaviorEventType
+  axisSummary      SearchPreferenceAxis[]
+  strength         SearchSignalStrength
+  dedupeKey        String?                 @unique
+  queryText        String?
+  companyName      String?
+  companySlug      String?
+  sourceUrl        String?
+  jobOfferId       String?
+  searchRunId      String?
+  emailDraftId     String?
+  mailboxMessageId String?
+  signalPayload    Json?
+  metadata         Json?
+  occurredAt       DateTime
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  user             User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace        Workspace?              @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  jobOffer         JobOffer?               @relation(fields: [jobOfferId], references: [id], onDelete: SetNull)
+  searchRun        SearchRun?              @relation(fields: [searchRunId], references: [id], onDelete: SetNull)
+  emailDraft       EmailDraft?             @relation(fields: [emailDraftId], references: [id], onDelete: SetNull)
+  mailboxMessage   MailboxMessage?         @relation(fields: [mailboxMessageId], references: [id], onDelete: SetNull)
+
+  @@index([userId, occurredAt])
+  @@index([workspaceId, occurredAt])
+  @@index([type, occurredAt])
+  @@index([jobOfferId])
+  @@index([searchRunId])
+  @@index([emailDraftId])
+  @@index([mailboxMessageId])
+}
+
+model UserSearchProfileInference {
+  id               String     @id @default(cuid())
+  userId           String     @unique
+  workspaceId      String?
+  version          Int        @default(1)
+  declaredSnapshot Json?
+  inferredSnapshot Json?
+  diagnostics      Json?
+  eventCount       Int        @default(0)
+  lastEventAt      DateTime?
+  lastComputedAt   DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  user             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace        Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, lastComputedAt])
+}
+
+model AppJob {
+  id           String       @id @default(cuid())
+  workspaceId  String?
+  userId       String?
+  type         AppJobType
+  status       AppJobStatus @default(PENDING)
+  payload      Json
+  scheduledAt  DateTime?
+  availableAt  DateTime     @default(now())
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  attemptCount Int          @default(0)
+  maxAttempts  Int          @default(5)
+  lastError    String?
+  lockToken    String?
+  lockedAt     DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  runs         AppJobRun[]
+  workspace    Workspace?   @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, availableAt])
+  @@index([type, status])
+  @@index([workspaceId])
+  @@index([userId])
+}
+
+model AppJobRun {
+  id           String       @id @default(cuid())
+  jobId        String
+  status       AppJobStatus
+  startedAt    DateTime     @default(now())
+  finishedAt   DateTime?
+  errorMessage String?
+  output       Json?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  job          AppJob       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, createdAt])
 }

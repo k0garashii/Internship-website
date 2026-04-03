@@ -52,6 +52,12 @@ export default async function ProfileManagementPage() {
             >
               Modifier le profil
             </Link>
+            <Link
+              href="/workspace/profile/inference"
+              className="inline-flex items-center justify-center rounded-full border border-line px-5 py-3 text-sm font-medium text-foreground transition hover:-translate-y-0.5"
+            >
+              Voir le profil implicite
+            </Link>
           </div>
         </article>
 

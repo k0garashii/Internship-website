@@ -6,6 +6,7 @@ import {
 import { z } from "zod";
 
 import { db } from "@/lib/db";
+import { getRequiredActiveWorkspaceIdForUser } from "@/server/application/workspace/workspace-service";
 
 const emailDeliveryLogListItemSchema = z.object({
   id: z.string().trim().min(10),
@@ -35,6 +36,7 @@ export type EmailDeliveryLogListItem = z.output<
 
 type DeliveryLogPayload = {
   userId: string;
+  workspaceId?: string | null;
   emailDraftId?: string | null;
   provider: string;
   operation: EmailDeliveryOperation;
@@ -58,9 +60,13 @@ function truncate(value: string | null | undefined, length: number) {
 }
 
 export async function createEmailDeliveryLog(input: DeliveryLogPayload) {
+  const workspaceId =
+    input.workspaceId ?? (await getRequiredActiveWorkspaceIdForUser(input.userId));
+
   return db.emailDeliveryLog.create({
     data: {
       userId: input.userId,
+      workspaceId,
       emailDraftId: input.emailDraftId ?? null,
       provider: input.provider,
       operation: input.operation,

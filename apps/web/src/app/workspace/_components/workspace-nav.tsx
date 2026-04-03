@@ -28,8 +28,14 @@ const primaryItems: NavItem[] = [
   {
     href: "/workspace/profile",
     label: "Gestion de profil",
-    description: "Profil, préférences et domaines",
+    description: "Profil, preferences et domaines",
     shortLabel: "GP",
+  },
+  {
+    href: "/workspace/workspace",
+    label: "Workspace",
+    description: "Espace, membres et connexions",
+    shortLabel: "WS",
   },
 ];
 
@@ -46,13 +52,13 @@ const secondaryGroups = [
       {
         href: "/workspace/email",
         label: "Messagerie Gmail",
-        description: "Boite, reponses et fallback email",
+        description: "Boite, reponses et suivi email",
         shortLabel: "EM",
       },
       {
         href: "/workspace/drafts",
         label: "Brouillons",
-        description: "Relire et copier les emails générés",
+        description: "Relire et copier les emails generes",
         shortLabel: "BR",
       },
     ],
@@ -89,9 +95,6 @@ function SidebarLink({
           : "block w-full rounded-[1.2rem] border border-transparent px-4 py-3 text-foreground transition hover:border-line hover:bg-white/80"
       }
     >
-      <p className="font-mono text-[11px] uppercase tracking-[0.2em] opacity-70">
-        {isCurrent ? "Ouvert" : "Acces"}
-      </p>
       <p className="mt-2 text-sm font-medium">{item.label}</p>
       <p className={isCurrent ? "mt-1 text-xs text-slate-200" : "mt-1 text-xs text-muted"}>
         {item.description}

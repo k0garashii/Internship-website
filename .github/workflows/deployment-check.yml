@@ -1,0 +1,21 @@
+name: Deployment Check
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  production-readiness:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Summarize deployment prerequisites
+        run: |
+          echo "Vercel deployment expects apps/web as Root Directory."
+          echo "Required runtime env vars: DATABASE_URL, DIRECT_URL, APP_BASE_URL."
+          echo "Optional integrations: GEMINI_API_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI."

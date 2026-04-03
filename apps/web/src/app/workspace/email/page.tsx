@@ -92,12 +92,11 @@ export default async function EmailWorkspacePage({
         <h1 className="mt-4 text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
           Suivie de candidature en direct.
         </h1>
-        <div className="status-row mt-6">
-          <div className="status-pill">Lecture Gmail cible</div>
-          <div className="status-pill status-pill-info">Reponses detectees par thread</div>
-          <div className="status-pill status-pill-info">Brouillons et envoi Gmail</div>
-          <div className="status-pill status-pill-success">Forwarding fallback conserve</div>
-        </div>
+        <p className="app-copy mt-4 max-w-3xl">
+          La connexion Gmail se lance maintenant depuis le tableau de bord. Cette page
+          reste centree sur la lecture des fils, la synchronisation et l envoi une fois
+          les permissions completes.
+        </p>
       </section>
 
       {banner ? (
@@ -112,11 +111,28 @@ export default async function EmailWorkspacePage({
         </section>
       ) : null}
       <GmailMailboxPanel initialSnapshot={gmailSnapshot} />
-      <GmailSendPanel
-        defaultRecipientEmail={viewer.email ?? ""}
-        gmailCanSend={gmailSnapshot.source?.hasSendScope ?? false}
-        initialLogs={deliveryLogs}
-      />
+
+      {gmailSnapshot.source?.hasSendScope ? (
+        <GmailSendPanel
+          defaultRecipientEmail={viewer.email ?? ""}
+          gmailCanSend={gmailSnapshot.source.hasSendScope}
+          initialLogs={deliveryLogs}
+        />
+      ) : (
+        <section className="rounded-[1.75rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] md:p-8">
+          <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
+            Envoi Gmail
+          </p>
+          <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
+            L espace d envoi apparaitra ici apres activation.
+          </h2>
+          <p className="mt-3 text-sm leading-7 text-foreground">
+            Le bouton d activation brouillons et envoi n apparait plus dans cette
+            page. Il est maintenant propose sur le tableau de bord juste apres la
+            connexion Gmail.
+          </p>
+        </section>
+      )}
     </main>
   );
 }

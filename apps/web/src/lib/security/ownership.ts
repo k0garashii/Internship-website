@@ -1,4 +1,4 @@
-import { assertAuthenticatedViewer, type AuthenticatedViewer } from "@/lib/auth/viewer";
+import { assertAuthenticatedViewer, assertWorkspaceViewer, type AuthenticatedViewer } from "@/lib/auth/viewer";
 
 type UserScopedWhere = Record<string, unknown> & {
   userId?: string;
@@ -15,6 +15,21 @@ export function userScope(viewer: AuthenticatedViewer): { userId: string } {
   const authenticatedViewer = assertAuthenticatedViewer(viewer);
 
   return { userId: authenticatedViewer.userId };
+}
+
+export function workspaceScope(
+  viewer: AuthenticatedViewer,
+): { userId: string; workspaceId: string } {
+  const workspaceViewer = assertWorkspaceViewer(viewer);
+
+  return {
+    userId: workspaceViewer.userId,
+    workspaceId: workspaceViewer.workspaceId,
+  };
+}
+
+export function requireViewerWorkspaceId(viewer: AuthenticatedViewer): string {
+  return assertWorkspaceViewer(viewer).workspaceId;
 }
 
 export function scopedWhere<TWhere extends UserScopedWhere>(

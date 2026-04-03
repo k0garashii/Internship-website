@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { db } from "@/lib/db";
 import { type AuthenticatedViewer, assertAuthenticatedViewer } from "@/lib/auth/viewer";
+import { requireViewerWorkspaceId } from "@/lib/security/ownership";
 import {
   companyWatchlistFileSchema,
   parseCompanyWatchlistFile,
@@ -176,6 +177,7 @@ export async function exportUserConfig(viewer: AuthenticatedViewer) {
 
 export async function importUserConfig(viewer: AuthenticatedViewer, input: unknown) {
   const authenticatedViewer = assertAuthenticatedViewer(viewer);
+  const workspaceId = requireViewerWorkspaceId(authenticatedViewer);
   const parsed = configImportRequestSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -221,6 +223,7 @@ export async function importUserConfig(viewer: AuthenticatedViewer, input: unkno
         },
         data: {
           fullName: importedProfile.parsedInput.fullName,
+          activeWorkspaceId: workspaceId,
         },
       });
 
@@ -229,6 +232,7 @@ export async function importUserConfig(viewer: AuthenticatedViewer, input: unkno
           userId: authenticatedViewer.userId,
         },
         update: {
+          workspaceId,
           headline: importedProfile.parsedInput.headline || null,
           summary: importedProfile.parsedInput.summary || null,
           school: importedProfile.parsedInput.school || null,
@@ -256,6 +260,7 @@ export async function importUserConfig(viewer: AuthenticatedViewer, input: unkno
         },
         create: {
           userId: authenticatedViewer.userId,
+          workspaceId,
           headline: importedProfile.parsedInput.headline || null,
           summary: importedProfile.parsedInput.summary || null,
           school: importedProfile.parsedInput.school || null,
@@ -312,6 +317,7 @@ export async function importUserConfig(viewer: AuthenticatedViewer, input: unkno
           userId: authenticatedViewer.userId,
         },
         update: {
+          workspaceId,
           constraints: buildMergedConstraints(existingUser.profile?.constraints, {
             employmentTypes: importedTargets.parsedInput.employmentTypes,
             searchKeywords: importedTargets.parsedInput.searchKeywords
@@ -324,6 +330,7 @@ export async function importUserConfig(viewer: AuthenticatedViewer, input: unkno
         },
         create: {
           userId: authenticatedViewer.userId,
+          workspaceId,
           remotePreference: existingUser.profile?.remotePreference ?? null,
           constraints: buildMergedConstraints({}, {
             employmentTypes: importedTargets.parsedInput.employmentTypes,
@@ -347,6 +354,7 @@ export async function importUserConfig(viewer: AuthenticatedViewer, input: unkno
         await tx.searchTarget.createMany({
           data: importedTargets.targets.map((target) => ({
             userId: authenticatedViewer.userId,
+            workspaceId,
             title: target.title,
             normalizedTitle: target.normalizedTitle,
             source: TargetSource.IMPORTED,
@@ -367,6 +375,7 @@ export async function importUserConfig(viewer: AuthenticatedViewer, input: unkno
         await tx.searchLocation.createMany({
           data: importedTargets.locations.map((location) => ({
             userId: authenticatedViewer.userId,
+            workspaceId,
             label: location.label,
             normalizedLabel: location.normalizedLabel,
             countryCode: location.countryCode,
@@ -387,6 +396,7 @@ export async function importUserConfig(viewer: AuthenticatedViewer, input: unkno
         await tx.searchDomain.createMany({
           data: importedTargets.domains.map((domain) => ({
             userId: authenticatedViewer.userId,
+            workspaceId,
             label: domain.label,
             normalizedLabel: domain.normalizedLabel,
             rationale: domain.rationale,
@@ -409,6 +419,7 @@ export async function importUserConfig(viewer: AuthenticatedViewer, input: unkno
         await tx.companyWatchlistItem.createMany({
           data: importedWatchlist.items.map((item) => ({
             userId: authenticatedViewer.userId,
+            workspaceId,
             companyName: item.companyName,
             normalizedName: item.normalizedName,
             websiteUrl: item.websiteUrl,

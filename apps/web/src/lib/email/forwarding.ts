@@ -15,6 +15,8 @@ import {
   type InboundEmailOpportunityCandidate,
   parseInboundEmailOpportunity,
 } from "@/lib/email/opportunities";
+import { requireViewerWorkspaceId } from "@/lib/security/ownership";
+import { getRequiredActiveWorkspaceIdForUser } from "@/server/application/workspace/workspace-service";
 
 const FORWARDING_LABEL = "Forwarding dedie";
 const FORWARDING_WEBHOOK_PATH = "/api/email/forwarding/intake";
@@ -506,6 +508,7 @@ export async function provisionForwardingSource(
   viewer: AuthenticatedViewer,
 ): Promise<ForwardingProvisionResponse> {
   const authenticatedViewer = assertAuthenticatedViewer(viewer);
+  const workspaceId = requireViewerWorkspaceId(authenticatedViewer);
   const forwardingSecret = buildForwardingSecret();
   const webhookSecretHash = hashForwardingSecret(forwardingSecret);
 
@@ -534,12 +537,14 @@ export async function provisionForwardingSource(
       update: {
         label: FORWARDING_LABEL,
         status: EmailIngestionConnectionStatus.ACTIVE,
+        workspaceId,
         forwardingLocalPart,
         forwardingAddress: buildForwardingAddress(forwardingLocalPart),
         webhookSecretHash,
       },
       create: {
         userId: authenticatedViewer.userId,
+        workspaceId,
         sourceType: EmailIngestionSourceType.FORWARDING,
         label: FORWARDING_LABEL,
         status: EmailIngestionConnectionStatus.ACTIVE,
@@ -586,6 +591,7 @@ export async function ingestForwardedEmail(input: unknown, providedSecret: strin
     select: {
       id: true,
       userId: true,
+      workspaceId: true,
       webhookSecretHash: true,
     },
   });
@@ -680,10 +686,14 @@ export async function ingestForwardedEmail(input: unknown, providedSecret: strin
 
   const parsedAtIngestion = parseInboundEmailOpportunity(emailForParsing);
 
+  const workspaceId =
+    connection.workspaceId ?? (await getRequiredActiveWorkspaceIdForUser(connection.userId));
+
   const email = await db.$transaction(async (tx) => {
     const created = await tx.inboundEmail.create({
       data: {
         userId: connection.userId,
+        workspaceId,
         connectionId: connection.id,
         externalMessageId: normalizedPayload.messageId,
         fromEmail: sender.email,
@@ -718,6 +728,7 @@ export async function ingestForwardedEmail(input: unknown, providedSecret: strin
         id: connection.id,
       },
       data: {
+        workspaceId,
         lastIngestedAt: created.receivedAt,
         status: EmailIngestionConnectionStatus.ACTIVE,
       },

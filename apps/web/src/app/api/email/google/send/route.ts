@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 
 import { getCurrentViewer } from "@/lib/auth/session";
 import { listEmailDeliveryLogsForUser } from "@/lib/email/delivery-logs";
-import { GmailSendError, sendAdhocGmailMessage } from "@/lib/email/gmail-send";
+import { GmailSendError } from "@/lib/email/gmail-send";
 import { logRouteError, logRouteEvent } from "@/lib/observability/error-logging";
+import { FeatureAccessError } from "@/server/application/entitlements/entitlement-service";
+import { sendAdhocGmailMessageForViewer } from "@/server/facades/email-facade";
 
 export const runtime = "nodejs";
 
@@ -49,7 +51,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await sendAdhocGmailMessage(viewer.userId, payload);
+    const result = await sendAdhocGmailMessageForViewer(viewer, payload);
 
     logRouteEvent({
       route: "/api/email/google/send",
@@ -66,7 +68,7 @@ export async function POST(request: Request) {
       status: 200,
     });
   } catch (error) {
-    if (error instanceof GmailSendError) {
+    if (error instanceof GmailSendError || error instanceof FeatureAccessError) {
       logRouteError({
         level: error.status >= 500 ? "error" : "warn",
         route: "/api/email/google/send",

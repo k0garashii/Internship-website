@@ -46,9 +46,17 @@ Strategie:
 
 Technique privilegiee:
 
-- recherche web ou navigation ciblee par plateforme
-- scraping modere et stable sur pages liste
+- interrogation directe quand une source publique stable existe
+- sinon recherche web ou navigation ciblee par plateforme
+- scraping modere et stable sur pages liste ou snippets publics
 - approfondissement sur la fiche detail seulement pour les offres prometteuses
+
+Implementation actuelle:
+
+- `Welcome to the Jungle` via son index public
+- `LinkedIn Jobs` via recherche web publique ciblee
+- `Indeed` via recherche web publique ciblee
+- autres boards / ATS via recherche web approfondie et classification des domaines
 
 Gemini:
 
@@ -69,6 +77,10 @@ Technique privilegiee:
 
 - requetes explicites basees sur `role + domaine + localisation + site`
 - pas de scraping massif en premiere intention
+- classification des resultats vers:
+  - job boards
+  - ATS
+  - pages carrieres first-party
 
 Gemini:
 
@@ -81,6 +93,7 @@ Gemini:
 2. Si la source est une plateforme structuree, commencer par les pages de recherche publiques.
 3. Si la source n est pas structuree ou peu fiable, passer par la recherche web generaliste pour retrouver une source plus propre.
 4. Utiliser Gemini seulement comme assistant de formulation, de regroupement ou de priorisation, jamais comme source d offre.
+5. Si le site corporate ne revele pas clairement sa page carriere, lancer un fallback web pour retrouver le point d entree ATS / carrieres.
 
 ## 5. Ce que cela prepare
 

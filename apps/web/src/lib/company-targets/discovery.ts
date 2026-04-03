@@ -5,6 +5,11 @@ import {
   type CompanyTargetSuggestionItem,
 } from "@/lib/company-targets/suggestions";
 import { logServiceError } from "@/lib/observability/error-logging";
+import {
+  classifyAtsProvider,
+  hasCareerSignal,
+  searchDuckDuckGoHtml,
+} from "@/lib/web/public-search";
 
 const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -23,20 +28,6 @@ const COMMON_CAREER_PATHS = [
   "/company/careers",
   "/about/jobs",
 ] as const;
-const CAREER_KEYWORDS = [
-  "careers",
-  "career",
-  "jobs",
-  "job",
-  "join-us",
-  "join us",
-  "recrutement",
-  "emploi",
-  "carrieres",
-  "talent",
-  "work with us",
-  "vacancies",
-] as const;
 
 export const companyTargetDiscoveryRequestSchema = z.object({
   targets: z.array(companyTargetSuggestionItemSchema).min(1).max(12),
@@ -47,6 +38,7 @@ const discoveryMethodSchema = z.enum([
   "provided",
   "homepage_link",
   "common_path",
+  "web_search",
   "unresolved",
   "error",
 ]);
@@ -74,48 +66,6 @@ export type CareerSourceDiscoveryResult = z.output<typeof careerSourceDiscoveryS
 
 function uniqueList(values: Array<string | null | undefined>) {
   return Array.from(new Set(values.filter((value): value is string => Boolean(value))));
-}
-
-function classifyAtsProvider(url: string) {
-  const normalized = url.toLowerCase();
-
-  if (normalized.includes("greenhouse")) {
-    return "Greenhouse";
-  }
-  if (normalized.includes("lever.co")) {
-    return "Lever";
-  }
-  if (normalized.includes("smartrecruiters")) {
-    return "SmartRecruiters";
-  }
-  if (normalized.includes("myworkdayjobs") || normalized.includes("workdayjobs")) {
-    return "Workday";
-  }
-  if (normalized.includes("recruitee")) {
-    return "Recruitee";
-  }
-  if (normalized.includes("ashbyhq")) {
-    return "Ashby";
-  }
-  if (normalized.includes("teamtailor")) {
-    return "Teamtailor";
-  }
-  if (normalized.includes("jobvite")) {
-    return "Jobvite";
-  }
-  if (normalized.includes("welcometothejungle")) {
-    return "Welcome to the Jungle";
-  }
-  if (normalized.includes("taleo")) {
-    return "Taleo";
-  }
-
-  return null;
-}
-
-function hasCareerSignal(text: string) {
-  const normalized = text.toLowerCase();
-  return CAREER_KEYWORDS.some((keyword) => normalized.includes(keyword));
 }
 
 function scoreCareerCandidate(url: string, label: string) {
@@ -235,7 +185,7 @@ function createResolvedResult(
   target: CompanyTargetSuggestionItem,
   options: {
     careerPageUrl: string;
-    discoveryMethod: "provided" | "homepage_link" | "common_path";
+    discoveryMethod: "provided" | "homepage_link" | "common_path" | "web_search";
     confidence: "high" | "medium" | "low";
     atsProvider?: string | null;
     checkedUrls?: string[];
@@ -288,6 +238,119 @@ async function probeCommonPaths(baseUrl: string, checkedUrls: string[]) {
   }
 
   return null;
+}
+
+function extractHostname(url: string | null | undefined) {
+  if (!url) {
+    return null;
+  }
+
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
+
+function scoreWebCareerCandidate(
+  target: CompanyTargetSuggestionItem,
+  candidate: {
+    url: string;
+    title: string;
+    snippet: string | null;
+    sourceKind: "JOB_BOARD" | "COMPANY_CAREERS" | "OTHER";
+  },
+) {
+  const normalizedUrl = candidate.url.toLowerCase();
+  const text = [candidate.title, candidate.snippet, candidate.url].filter(Boolean).join(" ").toLowerCase();
+  const websiteHost = extractHostname(target.websiteUrl);
+  const candidateHost = extractHostname(candidate.url);
+  let score = 0;
+
+  if (candidate.sourceKind === "COMPANY_CAREERS") {
+    score += 70;
+  }
+  if (classifyAtsProvider(candidate.url)) {
+    score += 55;
+  }
+  if (candidateHost && websiteHost && candidateHost.includes(websiteHost)) {
+    score += 30;
+  }
+  if (text.includes(target.companyName.toLowerCase())) {
+    score += 18;
+  }
+  if (hasCareerSignal(text)) {
+    score += 20;
+  }
+  if (normalizedUrl.includes("/blog") || normalizedUrl.includes("/news")) {
+    score -= 25;
+  }
+
+  return score;
+}
+
+async function searchCareerSourceOnWeb(
+  target: CompanyTargetSuggestionItem,
+  checkedUrls: string[],
+) {
+  const websiteHost = extractHostname(target.websiteUrl);
+  const queries = uniqueList([
+    websiteHost ? `site:${websiteHost} careers jobs recrutement` : null,
+    `${target.companyName} careers jobs recrutement`,
+  ]);
+  const candidates: Array<{
+    url: string;
+    title: string;
+    snippet: string | null;
+    sourceKind: "JOB_BOARD" | "COMPANY_CAREERS" | "OTHER";
+    score: number;
+  }> = [];
+
+  for (const queryText of queries) {
+    const result = await searchDuckDuckGoHtml(queryText, {
+      maxResults: 6,
+      region: "fr-fr",
+    });
+
+    result.results.forEach((item) => {
+      checkedUrls.push(item.url);
+      const score = scoreWebCareerCandidate(target, {
+        url: item.url,
+        title: item.title,
+        snippet: item.snippet,
+        sourceKind: item.source.kind,
+      });
+
+      if (score >= 55) {
+        candidates.push({
+          url: item.url,
+          title: item.title,
+          snippet: item.snippet,
+          sourceKind: item.source.kind,
+          score,
+        });
+      }
+    });
+  }
+
+  const bestCandidate = candidates.sort((left, right) => right.score - left.score)[0];
+
+  if (!bestCandidate) {
+    return null;
+  }
+
+  const validated = await validateCareerUrl(bestCandidate.url);
+
+  if (!validated) {
+    return null;
+  }
+
+  return {
+    ...validated,
+    notes: bestCandidate.title
+      ? `Resultat de recherche web: ${bestCandidate.title}.`
+      : validated.notes,
+  };
 }
 
 export async function discoverCareerSourcesForTargets(
@@ -358,6 +421,19 @@ export async function discoverCareerSourcesForTargets(
               notes: commonPathMatch.notes,
             });
           }
+        }
+
+        const webSearchMatch = await searchCareerSourceOnWeb(target, checkedUrls);
+
+        if (webSearchMatch) {
+          return createResolvedResult(target, {
+            careerPageUrl: webSearchMatch.url,
+            discoveryMethod: "web_search",
+            confidence: classifyAtsProvider(webSearchMatch.url) ? "high" : "medium",
+            atsProvider: webSearchMatch.atsProvider,
+            checkedUrls,
+            notes: webSearchMatch.notes,
+          });
         }
 
         return createFallbackResult(target, {

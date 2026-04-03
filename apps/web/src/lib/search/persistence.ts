@@ -8,6 +8,8 @@ import {
 
 import { db } from "@/lib/db";
 import type { SearchDiscoveryOffer, SearchDiscoveryResult } from "@/lib/search/types";
+import type { AuthenticatedViewer } from "@/lib/auth/viewer";
+import { getRequiredActiveWorkspaceIdForUser } from "@/server/application/workspace/workspace-service";
 
 export class SearchPersistenceError extends Error {
   constructor(
@@ -226,7 +228,7 @@ function findDuplicateOffer(
 }
 
 export async function persistSearchDiscoveryResult(
-  userId: string,
+  viewer: Pick<AuthenticatedViewer, "userId" | "workspaceId">,
   result: SearchDiscoveryResult,
 ): Promise<SearchPersistenceSummary> {
   if (result.offers.length !== result.normalizedOffers.length) {
@@ -237,6 +239,9 @@ export async function persistSearchDiscoveryResult(
   }
 
   const now = new Date();
+  const userId = viewer.userId;
+  const workspaceId =
+    viewer.workspaceId ?? (await getRequiredActiveWorkspaceIdForUser(viewer.userId));
   const normalizedByRawSourceId = new Map(
     result.normalizedOffers.map((offer) => [offer.rawSourceId, offer]),
   );
@@ -245,6 +250,7 @@ export async function persistSearchDiscoveryResult(
     const searchRun = await tx.searchRun.create({
       data: {
         userId,
+        workspaceId,
         label: buildSearchRunLabel(result.generatedAt),
         queryText: buildSearchRunQueryText(result),
         status: SearchRunStatus.COMPLETED,
@@ -267,6 +273,7 @@ export async function persistSearchDiscoveryResult(
     const existingOffers = await tx.jobOffer.findMany({
       where: {
         userId,
+        workspaceId,
       },
       select: {
         id: true,
@@ -356,6 +363,7 @@ export async function persistSearchDiscoveryResult(
         : await tx.jobOffer.create({
             data: {
               userId,
+              workspaceId,
               sourceKind: mapOfferSourceKind(offer.sourceKind),
               sourceSite: offer.sourceSite,
               sourceUrl: offer.sourceUrl,

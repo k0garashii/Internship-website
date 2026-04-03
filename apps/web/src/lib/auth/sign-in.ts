@@ -2,9 +2,10 @@ import { UserStatus } from "@prisma/client";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
+import { issueViewerSession } from "@/server/facades/auth-facade";
 
 import { verifyPassword } from "./password";
-import { prepareAuthSession, type SessionContext } from "./session";
+import { type SessionContext } from "./session";
 
 const signInUserSchema = z.object({
   email: z.email().transform((value) => value.trim().toLowerCase()),
@@ -64,30 +65,15 @@ export async function signInUser(
     throw new SignInUserError("Invalid email or password", 401);
   }
 
-  await db.authSession.deleteMany({
-    where: {
-      userId: user.id,
-      expiresAt: {
-        lte: new Date(),
-      },
-    },
-  });
-
-  const session = prepareAuthSession(user.id, sessionContext);
-
-  await db.authSession.create({
-    data: session.record,
+  const result = await issueViewerSession({
+    userId: user.id,
+    email: user.email,
+    fullName: user.fullName,
+    sessionContext,
   });
 
   return {
-    user: {
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-    },
-    session: {
-      token: session.token,
-      expiresAt: session.expiresAt,
-    },
+    user: result.user,
+    session: result.session,
   };
 }

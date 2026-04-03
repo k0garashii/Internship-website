@@ -1,10 +1,13 @@
 import {
   InboundEmailSignal,
+  SearchBehaviorEventType,
   MailboxMessageDirection,
   MailboxReplyStatus,
 } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { buildSignalsFromOfferRecord, recordSearchBehaviorEvent } from "@/server/application/personalization/search-behavior-service";
+import { refreshUserSearchProfileInference } from "@/server/application/personalization/profile-inference-service";
 
 type ThreadMessage = {
   id: string;
@@ -25,6 +28,7 @@ type ThreadMessage = {
 
 type OfferCandidate = {
   id: string;
+  workspaceId: string | null;
   title: string;
   companyName: string;
   companyWebsite: string | null;
@@ -291,6 +295,7 @@ export async function recomputeOfferMailboxSignals(userId: string) {
     },
     select: {
       id: true,
+      workspaceId: true,
       title: true,
       companyName: true,
       companyWebsite: true,
@@ -441,6 +446,7 @@ export async function recomputeOfferMailboxSignals(userId: string) {
           },
         },
         update: {
+          workspaceId: match.offer.workspaceId,
           mailboxMessageId: match.mailboxMessageId,
           providerThreadId: match.thread.threadId,
           status: match.thread.status,
@@ -460,6 +466,7 @@ export async function recomputeOfferMailboxSignals(userId: string) {
         },
         create: {
           userId,
+          workspaceId: match.offer.workspaceId,
           jobOfferId: match.offer.id,
           mailboxMessageId: match.mailboxMessageId,
           providerThreadId: match.thread.threadId,
@@ -481,6 +488,72 @@ export async function recomputeOfferMailboxSignals(userId: string) {
       });
     }
   });
+
+  let emittedBehaviorEvent = false;
+
+  for (const match of matches.values()) {
+    const latestMessage = match.thread.latestInbound ?? match.thread.latestOutbound;
+
+    if (!latestMessage) {
+      continue;
+    }
+
+    const eventType =
+      match.thread.status === MailboxReplyStatus.INTERVIEW
+        ? SearchBehaviorEventType.INTERVIEW_RECORDED
+        : match.thread.status === MailboxReplyStatus.REJECTION
+          ? SearchBehaviorEventType.REJECTION_RECORDED
+          : match.thread.status === MailboxReplyStatus.OFFER
+            ? SearchBehaviorEventType.OFFER_ACCEPTED_RECORDED
+            : match.thread.status === MailboxReplyStatus.RESPONSE_RECEIVED
+              ? SearchBehaviorEventType.EMAIL_REPLY_RECEIVED
+              : null;
+
+    if (!eventType) {
+      continue;
+    }
+
+    await recordSearchBehaviorEvent(
+      {
+        userId,
+        workspaceId: match.offer.workspaceId ?? undefined,
+      },
+      {
+        type: eventType,
+        dedupeKey: `mailbox:${latestMessage.id}:${eventType}`,
+        jobOfferId: match.offer.id,
+        mailboxMessageId: latestMessage.id,
+        companyName: match.offer.companyName,
+        sourceUrl: match.offer.sourceUrl,
+        signals: [
+          ...buildSignalsFromOfferRecord({
+            title: match.offer.title,
+            companyName: match.offer.companyName,
+            sourceUrl: match.offer.sourceUrl,
+          }),
+          {
+            axis: "OUTCOME",
+            value: match.thread.status,
+            polarity:
+              match.thread.status === MailboxReplyStatus.REJECTION ? "NEGATIVE" : "POSITIVE",
+            weight: 2,
+            source: "EMAIL_REPLY_RECEIVED",
+          },
+        ],
+        metadata: {
+          providerThreadId: match.thread.threadId,
+          score: match.score,
+          summary: match.thread.summary,
+        },
+        refreshInference: false,
+      },
+    );
+    emittedBehaviorEvent = true;
+  }
+
+  if (emittedBehaviorEvent) {
+    await refreshUserSearchProfileInference(userId);
+  }
 
   return {
     detectedReplyCount: matches.size,

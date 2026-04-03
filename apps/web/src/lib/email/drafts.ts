@@ -22,6 +22,8 @@ import {
   type OfferEmailPersonalizationPrompt,
 } from "@/lib/email/personalization-prompt";
 import { logServiceError } from "@/lib/observability/error-logging";
+import { buildSignalsFromOfferRecord, recordSearchBehaviorEvent } from "@/server/application/personalization/search-behavior-service";
+import { getRequiredActiveWorkspaceIdForUser } from "@/server/application/workspace/workspace-service";
 
 const generatedDraftSchema = z.object({
   subject: z.string().trim().min(6).max(160),
@@ -409,6 +411,7 @@ export async function generateOfferEmailDraft(
   userId: string,
   jobOfferId: string,
 ): Promise<GeneratedEmailDraft> {
+  const workspaceId = await getRequiredActiveWorkspaceIdForUser(userId);
   const context = await buildOfferGeminiContext(userId, jobOfferId);
   const prompt = buildOfferEmailPersonalizationPrompt(context);
   const apiKey = getGeminiApiKey();
@@ -446,6 +449,7 @@ export async function generateOfferEmailDraft(
   const savedDraft = await db.emailDraft.create({
     data: {
       userId,
+      workspaceId,
       jobOfferId,
       status: DraftStatus.DRAFT,
       recipientEmail,
@@ -463,6 +467,31 @@ export async function generateOfferEmailDraft(
       id: true,
     },
   });
+
+  await recordSearchBehaviorEvent(
+    {
+      userId,
+      workspaceId,
+    },
+    {
+      type: "DRAFT_GENERATED",
+      jobOfferId,
+      emailDraftId: savedDraft.id,
+      companyName: context.offer.companyName,
+      sourceUrl: context.offer.sourceUrl,
+      signals: buildSignalsFromOfferRecord({
+        title: context.offer.title,
+        companyName: context.offer.companyName,
+        locationLabel: context.offer.locationLabel,
+        employmentType: context.offer.contractType,
+        workMode: context.offer.workMode,
+      }),
+      metadata: {
+        provider,
+        generatedBy,
+      },
+    },
+  );
 
   return {
     draftId: savedDraft.id,
@@ -716,6 +745,47 @@ export async function sendEmailDraftWithGmail(
         labelIds: sent.labelIds ?? [],
       },
     });
+
+    if (draft.jobOfferId) {
+      const offer = await db.jobOffer.findFirst({
+        where: {
+          id: draft.jobOfferId,
+          userId,
+        },
+        select: {
+          id: true,
+          workspaceId: true,
+          title: true,
+          companyName: true,
+          locationLabel: true,
+          employmentType: true,
+          workMode: true,
+          sourceUrl: true,
+          rawPayload: true,
+        },
+      });
+
+      if (offer) {
+        await recordSearchBehaviorEvent(
+          {
+            userId,
+            workspaceId: offer.workspaceId ?? undefined,
+          },
+          {
+            type: "EMAIL_SENT",
+            jobOfferId: offer.id,
+            emailDraftId: draft.id,
+            companyName: offer.companyName,
+            sourceUrl: offer.sourceUrl,
+            signals: buildSignalsFromOfferRecord(offer),
+            metadata: {
+              recipientEmail: deliveryContext.recipientEmail,
+              providerThreadId: sent.threadId ?? deliveryContext.gmailThreadId,
+            },
+          },
+        );
+      }
+    }
   } catch (error) {
     await createEmailDeliveryLog({
       userId,

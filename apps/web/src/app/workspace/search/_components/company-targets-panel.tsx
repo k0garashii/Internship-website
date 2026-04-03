@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { buildCompanyOffersHref } from "@/lib/company-targets/offers";
 import type { CareerSourceDiscoveryResult } from "@/lib/company-targets/discovery";
 import type { CompanyTargetSuggestionResult } from "@/lib/company-targets/suggestions";
+import { trackSearchInteraction } from "./search-interactions";
 
 type Props = {
   disabled: boolean;
@@ -80,16 +81,66 @@ export function CompanyTargetsPanel({ disabled }: Props) {
     (discoveryResult?.results ?? []).map((item) => [item.companyName, item]),
   );
 
+  function trackCompanyInterest(options: {
+    type: "COMPANY_TARGET_OPENED" | "ATS_SOURCE_OPENED";
+    companyName: string;
+    companySlug?: string | null;
+    matchedSignals?: string[];
+    tags?: string[];
+    atsProvider?: string | null;
+    sourceUrl?: string | null;
+    ctaKind: string;
+  }) {
+    void trackSearchInteraction({
+      type: options.type,
+      companyName: options.companyName,
+      companySlug: options.companySlug ?? null,
+      sourceUrl: options.sourceUrl ?? null,
+      companyContext: {
+        companyName: options.companyName,
+        companySlug: options.companySlug ?? null,
+        matchedSignals: options.matchedSignals ?? [],
+        tags: options.tags ?? [],
+        atsProvider: options.atsProvider ?? null,
+      },
+      metadata: {
+        ctaKind: options.ctaKind,
+        origin: "company_targets_panel",
+      },
+    });
+  }
+
   function openCompanyOffersPage(options: {
     companyName: string;
     websiteUrl: string | null;
     careerPageUrl: string | null;
     atsProvider: string | null;
     discoveryMethod: string | null;
+    matchedSignals?: string[];
+    tags?: string[];
   }) {
     if (!options.careerPageUrl) {
       return;
     }
+
+    trackCompanyInterest({
+      type: "COMPANY_TARGET_OPENED",
+      companyName: options.companyName,
+      matchedSignals: options.matchedSignals,
+      tags: options.tags,
+      atsProvider: options.atsProvider,
+      sourceUrl: options.websiteUrl ?? options.careerPageUrl,
+      ctaKind: "company_card",
+    });
+    trackCompanyInterest({
+      type: "ATS_SOURCE_OPENED",
+      companyName: options.companyName,
+      matchedSignals: options.matchedSignals,
+      tags: options.tags,
+      atsProvider: options.atsProvider,
+      sourceUrl: options.careerPageUrl,
+      ctaKind: "company_offers_page",
+    });
 
     router.push(
       buildCompanyOffersHref({
@@ -115,7 +166,7 @@ export function CompanyTargetsPanel({ disabled }: Props) {
           <p className="text-sm leading-7 text-foreground">
             Cette etape transforme le profil en hypotheses d entreprises a investiguer.
             Elle sert a orienter la suite vers les sites carrieres proprietaires et les
-            ATS avant de se limiter aux job boards.
+            portails de recrutement avant de se limiter aux job boards.
           </p>
         </div>
 
@@ -128,11 +179,11 @@ export function CompanyTargetsPanel({ disabled }: Props) {
           {isLoading ? "Generation..." : "Generer des entreprises cibles"}
         </button>
 
-        <div aria-live="polite" className="text-sm leading-7 text-muted">
-          {result
-            ? `${result.suggestions.length} entreprise(s) cible(s) proposee(s).`
-            : "Aucune suggestion chargee pour le moment."}
-        </div>
+        {result ? (
+          <div aria-live="polite" className="text-sm leading-7 text-muted">
+            {`${result.suggestions.length} entreprise(s) cible(s) proposee(s).`}
+          </div>
+        ) : null}
 
         <button
           type="button"
@@ -140,7 +191,9 @@ export function CompanyTargetsPanel({ disabled }: Props) {
           disabled={disabled || isLoading || isDiscovering || !result}
           className="inline-flex w-full items-center justify-center rounded-full bg-foreground px-5 py-3 text-sm font-medium text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isDiscovering ? "Decouverte en cours..." : "Decouvrir les pages carrieres / ATS"}
+          {isDiscovering
+            ? "Decouverte en cours..."
+            : "Decouvrir les pages carrieres et portails de recrutement"}
         </button>
 
         {error ? (
@@ -169,15 +222,15 @@ export function CompanyTargetsPanel({ disabled }: Props) {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="surface-muted rounded-[1.25rem] p-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted">Provider</p>
+                <p className="text-xs uppercase tracking-[0.16em] text-muted">Moteur</p>
                 <p className="mt-2 text-base font-medium text-foreground">
                   {result.provider === "gemini" ? "Gemini" : "Heuristique locale"}
                 </p>
               </div>
               <div className="surface-muted rounded-[1.25rem] p-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted">Usage</p>
+                <p className="text-xs uppercase tracking-[0.16em] text-muted">Suite</p>
                 <p className="mt-2 text-sm leading-6 text-foreground">
-                  Prochaine etape: decouvrir les pages carrieres et ATS de ces entreprises.
+                  Prochaine etape: decouvrir les pages carrieres et portails de recrutement de ces entreprises.
                 </p>
               </div>
             </div>
@@ -218,6 +271,8 @@ export function CompanyTargetsPanel({ disabled }: Props) {
                     careerPageUrl: discovery?.careerPageUrl ?? null,
                     atsProvider: discovery?.atsProvider ?? null,
                     discoveryMethod: discovery?.discoveryMethod ?? null,
+                    matchedSignals: suggestion.matchedSignals,
+                    tags: suggestion.tags,
                   })
                 }
                 className={
@@ -258,7 +313,17 @@ export function CompanyTargetsPanel({ disabled }: Props) {
                       href={suggestion.websiteUrl}
                       target="_blank"
                       rel="noreferrer"
-                      onClick={(event) => event.stopPropagation()}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        trackCompanyInterest({
+                          type: "COMPANY_TARGET_OPENED",
+                          companyName: suggestion.companyName,
+                          matchedSignals: suggestion.matchedSignals,
+                          tags: suggestion.tags,
+                          sourceUrl: suggestion.websiteUrl,
+                          ctaKind: "official_site",
+                        });
+                      }}
                       className="inline-flex items-center justify-center rounded-full border border-line px-4 py-2 text-sm font-medium text-foreground transition hover:-translate-y-0.5"
                     >
                       Site officiel
@@ -278,7 +343,7 @@ export function CompanyTargetsPanel({ disabled }: Props) {
                 </div>
               </div>
 
-              <div className="mt-6 grid gap-4 xl:grid-cols-[1fr_0.78fr]">
+              <div className={suggestion.matchedSignals.length > 0 ? "mt-6 grid gap-4 xl:grid-cols-[1fr_0.78fr]" : "mt-6"}>
                 <div className="space-y-3">
                   <p className="text-sm font-medium text-foreground">Pourquoi cette entreprise</p>
                   <p className="text-sm leading-7 text-foreground">{suggestion.rationale}</p>
@@ -286,25 +351,25 @@ export function CompanyTargetsPanel({ disabled }: Props) {
                     <p className="text-sm leading-7 text-muted">{suggestion.notes}</p>
                   ) : null}
                 </div>
-                <div className="space-y-3 rounded-[1.5rem] border border-line bg-white/70 p-4">
-                  <p className="text-sm font-medium text-foreground">Signaux detectes</p>
-                  <div className="flex flex-wrap gap-2">
-                    {suggestion.matchedSignals.length > 0 ? (
-                      suggestion.matchedSignals.map((signal) => (
-                        <span
-                          key={signal}
-                          className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium uppercase tracking-[0.12em] text-foreground"
-                        >
-                          {signal}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-sm text-muted">
-                        Aucun signal fort retourne, suggestion generaliste.
-                      </span>
-                    )}
+                {suggestion.matchedSignals.length > 0 ? (
+                  <div className="space-y-3 rounded-[1.5rem] border border-line bg-white/70 p-4">
+                  {suggestion.matchedSignals.length > 0 ? (
+                    <>
+                      <p className="text-sm font-medium text-foreground">Signaux detectes</p>
+                      <div className="flex flex-wrap gap-2">
+                        {suggestion.matchedSignals.map((signal) => (
+                          <span
+                            key={signal}
+                            className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium uppercase tracking-[0.12em] text-foreground"
+                          >
+                            {signal}
+                          </span>
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
                   </div>
-                </div>
+                ) : null}
               </div>
               {discovery ? (
                 <div className="mt-6 rounded-[1.5rem] border border-line bg-white/70 p-4">
@@ -313,10 +378,11 @@ export function CompanyTargetsPanel({ disabled }: Props) {
                       <p className="text-sm font-medium text-foreground">
                         Decouverte carriere
                       </p>
-                      <p className="mt-2 text-sm leading-7 text-foreground">
-                        {discovery.notes ??
-                          "Resultat de la detection automatique depuis le site officiel."}
-                      </p>
+                      {discovery.notes ? (
+                        <p className="mt-2 text-sm leading-7 text-foreground">
+                          {discovery.notes}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <span
@@ -334,15 +400,17 @@ export function CompanyTargetsPanel({ disabled }: Props) {
                             ? "Erreur de detection"
                             : "Non detecte"}
                       </span>
+                      {discovery.discoveryMethod ? (
+                        <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground">
+                          {discovery.discoveryMethod}
+                        </span>
+                      ) : null}
                       <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground">
-                        {discovery.discoveryMethod}
-                      </span>
-                      <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground">
-                        confiance {discovery.confidence}
+                        fiabilite {discovery.confidence}
                       </span>
                       {discovery.atsProvider ? (
                         <span className="status-pill status-pill-accent">
-                          ATS {discovery.atsProvider}
+                          Portail {discovery.atsProvider}
                         </span>
                       ) : null}
                     </div>
@@ -354,6 +422,15 @@ export function CompanyTargetsPanel({ disabled }: Props) {
                           type="button"
                           onClick={(event) => {
                             event.stopPropagation();
+                            trackCompanyInterest({
+                              type: "ATS_SOURCE_OPENED",
+                              companyName: suggestion.companyName,
+                              matchedSignals: suggestion.matchedSignals,
+                              tags: suggestion.tags,
+                              atsProvider: discovery.atsProvider ?? null,
+                              sourceUrl: discovery.careerPageUrl,
+                              ctaKind: "company_offers_page",
+                            });
                             router.push(companyOffersPageUrl);
                           }}
                           className="inline-flex items-center justify-center rounded-full border border-line px-4 py-2 text-sm font-medium text-foreground transition hover:-translate-y-0.5"
@@ -365,10 +442,21 @@ export function CompanyTargetsPanel({ disabled }: Props) {
                         href={discovery.careerPageUrl}
                         target="_blank"
                         rel="noreferrer"
-                        onClick={(event) => event.stopPropagation()}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          trackCompanyInterest({
+                            type: "ATS_SOURCE_OPENED",
+                            companyName: suggestion.companyName,
+                            matchedSignals: suggestion.matchedSignals,
+                            tags: suggestion.tags,
+                            atsProvider: discovery.atsProvider ?? null,
+                            sourceUrl: discovery.careerPageUrl,
+                            ctaKind: "career_page",
+                          });
+                        }}
                         className="inline-flex items-center justify-center rounded-full bg-foreground px-4 py-2 text-sm font-medium text-white transition hover:-translate-y-0.5"
                       >
-                        Ouvrir le point d entree carriere
+                        Ouvrir la page de recrutement
                       </a>
                     </div>
                   ) : null}

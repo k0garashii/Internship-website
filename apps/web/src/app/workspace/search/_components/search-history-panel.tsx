@@ -17,10 +17,16 @@ const runStatusLabels: Record<string, string> = {
 
 function formatDateTime(value: string | null) {
   if (!value) {
-    return "Inconnue";
+    return null;
   }
 
-  return new Date(value).toLocaleString("fr-FR", {
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toLocaleString("fr-FR", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -47,14 +53,19 @@ export function SearchHistoryPanel({ result }: Props) {
           <p className="max-w-3xl text-sm leading-7 text-foreground">{result.summary}</p>
         </div>
         <div className="surface-muted rounded-[1.25rem] p-4">
-          <p className="text-xs uppercase tracking-[0.16em] text-muted">Runs</p>
+          <p className="text-xs uppercase tracking-[0.16em] text-muted">Recherches</p>
           <p className="mt-2 text-2xl font-semibold text-foreground">{result.runCount}</p>
         </div>
       </div>
 
       {result.runs.length > 0 ? (
         <div className="mt-6 space-y-4">
-          {result.runs.map((run) => (
+          {result.runs.map((run) => {
+            const createdAt = formatDateTime(run.createdAt);
+            const startedAt = formatDateTime(run.startedAt);
+            const completedAt = formatDateTime(run.completedAt);
+
+            return (
             <article
               key={run.id}
               className="rounded-[1.5rem] border border-line bg-white/70 p-5"
@@ -73,25 +84,31 @@ export function SearchHistoryPanel({ result }: Props) {
                     <h3 className="text-xl font-semibold tracking-tight text-foreground">
                       {run.label}
                     </h3>
-                    <p className="mt-2 text-sm text-muted">
-                      Creee le {formatDateTime(run.createdAt)}
-                    </p>
+                    {createdAt ? (
+                      <p className="mt-2 text-sm text-muted">
+                        Creee le {createdAt}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-[1.25rem] border border-line bg-card p-4">
-                    <p className="text-xs uppercase tracking-[0.16em] text-muted">Debut</p>
-                    <p className="mt-2 text-sm font-medium text-foreground">
-                      {formatDateTime(run.startedAt)}
-                    </p>
-                  </div>
-                  <div className="rounded-[1.25rem] border border-line bg-card p-4">
-                    <p className="text-xs uppercase tracking-[0.16em] text-muted">Fin</p>
-                    <p className="mt-2 text-sm font-medium text-foreground">
-                      {formatDateTime(run.completedAt)}
-                    </p>
-                  </div>
+                  {startedAt ? (
+                    <div className="rounded-[1.25rem] border border-line bg-card p-4">
+                      <p className="text-xs uppercase tracking-[0.16em] text-muted">Debut</p>
+                      <p className="mt-2 text-sm font-medium text-foreground">
+                        {startedAt}
+                      </p>
+                    </div>
+                  ) : null}
+                  {completedAt ? (
+                    <div className="rounded-[1.25rem] border border-line bg-card p-4">
+                      <p className="text-xs uppercase tracking-[0.16em] text-muted">Fin</p>
+                      <p className="mt-2 text-sm font-medium text-foreground">
+                        {completedAt}
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -108,7 +125,7 @@ export function SearchHistoryPanel({ result }: Props) {
               ) : null}
 
               <div className="mt-4">
-                <p className="text-sm font-medium text-foreground">Top offres du run</p>
+                <p className="text-sm font-medium text-foreground">Top offres de cette recherche</p>
                 {run.topOffers.length > 0 ? (
                   <div className="mt-3 grid gap-3 xl:grid-cols-3">
                     {run.topOffers.map((offer) => (
@@ -119,15 +136,20 @@ export function SearchHistoryPanel({ result }: Props) {
                       >
                         <p className="text-sm font-medium text-foreground">{offer.title}</p>
                         <p className="mt-1 text-sm text-muted">{offer.companyName}</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground">
-                            Rang {offer.rank ?? "n/a"}
-                          </span>
-                          <span className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900">
-                            Match {offer.matchScore ?? "n/a"}
-                            {offer.matchScore !== null ? "/100" : ""}
-                          </span>
-                        </div>
+                        {(offer.rank !== null || offer.matchScore !== null) ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {offer.rank !== null ? (
+                              <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground">
+                                Rang {offer.rank}
+                              </span>
+                            ) : null}
+                            {offer.matchScore !== null ? (
+                              <span className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900">
+                                Match {offer.matchScore}/100
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
                       </Link>
                     ))}
                   </div>
@@ -138,7 +160,8 @@ export function SearchHistoryPanel({ result }: Props) {
                 )}
               </div>
             </article>
-          ))}
+          );
+          })}
         </div>
       ) : (
         <article className="mt-6 rounded-[1.5rem] border border-dashed border-line bg-white/70 p-6 text-sm leading-7 text-muted">

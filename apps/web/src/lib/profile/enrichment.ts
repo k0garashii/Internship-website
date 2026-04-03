@@ -3,6 +3,7 @@ import { Prisma, ProfileEnrichmentStatus } from "@prisma/client";
 import { db } from "@/lib/db";
 import { logServiceError } from "@/lib/observability/error-logging";
 import { normalizeListItem, slugify } from "@/lib/profile/schema";
+import { getRequiredActiveWorkspaceIdForUser } from "@/server/application/workspace/workspace-service";
 
 const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -426,6 +427,7 @@ async function safeExtract(
 }
 
 export async function refreshProfileEnrichment(userId: string) {
+  const workspaceId = await getRequiredActiveWorkspaceIdForUser(userId);
   const user = await db.user.findUnique({
     where: {
       id: userId,
@@ -455,11 +457,13 @@ export async function refreshProfileEnrichment(userId: string) {
       userId,
     },
     update: {
+      workspaceId,
       status: ProfileEnrichmentStatus.PENDING,
       lastError: null,
     },
     create: {
       userId,
+      workspaceId,
       status: ProfileEnrichmentStatus.PENDING,
     },
   });
@@ -510,6 +514,7 @@ export async function refreshProfileEnrichment(userId: string) {
       userId,
     },
     update: {
+      workspaceId,
       status:
         mergedSignals.length > 0 || failedSources.length < 3
           ? ProfileEnrichmentStatus.READY
@@ -525,6 +530,7 @@ export async function refreshProfileEnrichment(userId: string) {
     },
     create: {
       userId,
+      workspaceId,
       status:
         mergedSignals.length > 0 || failedSources.length < 3
           ? ProfileEnrichmentStatus.READY

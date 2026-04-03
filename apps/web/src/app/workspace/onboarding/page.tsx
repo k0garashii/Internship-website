@@ -34,11 +34,6 @@ export default async function ProfileOnboardingPage() {
           contraintes utiles au matching. Les donnees sont sauvegardees et rechargees
           depuis la base utilisateur.
         </p>
-        <div className="status-row mt-6">
-          <div className="status-pill">Labels visibles sur tous les champs</div>
-          <div className="status-pill status-pill-info">Disponibilite debut et fin distinctes</div>
-          <div className="status-pill status-pill-success">Retour de sauvegarde explicite</div>
-        </div>
       </section>
 
       <ProfileOnboardingForm

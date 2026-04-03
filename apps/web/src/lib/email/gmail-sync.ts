@@ -26,6 +26,7 @@ import {
 import { gmailSyncResultSchema, type GmailSyncResult } from "@/lib/email/mailbox-sync";
 import { normalizeConversationSubject, recomputeOfferMailboxSignals } from "@/lib/email/mailbox-replies";
 import { logServiceError, logServiceEvent } from "@/lib/observability/error-logging";
+import { getRequiredActiveWorkspaceIdForUser } from "@/server/application/workspace/workspace-service";
 
 const URL_REGEX = /https?:\/\/[^\s"'<>]+/i;
 const GMAIL_SYNC_LIMIT = 40;
@@ -205,6 +206,8 @@ export async function syncGmailMailbox(userId: string): Promise<GmailSyncResult>
   });
 
   try {
+    const workspaceId =
+      connection.workspaceId ?? (await getRequiredActiveWorkspaceIdForUser(userId));
     const profile = await getGmailProfile(accessToken);
     const syncQuery = connection.syncQuery?.trim() || getDefaultGmailSyncQuery();
     const { messageIds, usedHistoryCursor } = await listMessageIds(
@@ -303,6 +306,7 @@ export async function syncGmailMailbox(userId: string): Promise<GmailSyncResult>
         },
         create: {
           userId,
+          workspaceId,
           connectionId: connection.id,
           providerMessageId: detail.id,
           providerThreadId: detail.threadId,
@@ -417,6 +421,7 @@ export async function syncGmailMailbox(userId: string): Promise<GmailSyncResult>
         id: connection.id,
       },
       data: {
+        workspaceId,
         mailboxAddress: profile.emailAddress,
         syncCursor: profile.historyId,
         syncQuery,

@@ -212,6 +212,23 @@ function buildQueryExplanation(
   return `Variante construite autour du ${details}.`;
 }
 
+function buildUniqueQueryId(
+  seenIds: Set<string>,
+  seed: string,
+) {
+  const baseId = slugify(seed) || "query";
+  let candidate = baseId;
+  let suffix = 2;
+
+  while (seenIds.has(candidate)) {
+    candidate = `${baseId}-${suffix}`;
+    suffix += 1;
+  }
+
+  seenIds.add(candidate);
+  return candidate;
+}
+
 function createQueriesFromDiverseInputs(
   targetRoles: string[],
   domains: string[],
@@ -221,6 +238,7 @@ function createQueriesFromDiverseInputs(
 ) {
   const queries: SearchQueryCandidate[] = [];
   const seenCombinations = new Set<string>();
+  const seenIds = new Set<string>();
   const maxRounds = Math.max(domains.length, 1) * Math.max(locations.length, 1) + 2;
 
   for (let round = 0; round < maxRounds && queries.length < maxQueries; round += 1) {
@@ -255,7 +273,10 @@ function createQueriesFromDiverseInputs(
         ...focusKeywords.slice(0, 3),
         location,
       ]);
-      const id = slugify(`${combinationKey}-${round}`);
+      const id = buildUniqueQueryId(
+        seenIds,
+        `${combinationKey}-${round}-${roleIndex}-${queries.length}`,
+      );
 
       seenCombinations.add(combinationKey);
       queries.push({

@@ -1,6 +1,7 @@
 import type { OfferLifecycleStatus, SearchRunStatus, FeedbackDecision } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { buildSignalsFromOfferRecord, recordSearchBehaviorEvent } from "@/server/application/personalization/search-behavior-service";
 import type {
   NormalizedOpportunity,
   OfferProfileMatch,
@@ -21,6 +22,12 @@ export class SearchOfferListingError extends Error {
     this.name = "SearchOfferListingError";
   }
 }
+
+export type DeletedPersistedOfferResult = {
+  deletedOfferId: string;
+  deletedOfferTitle: string;
+  deletedDraftCount: number;
+};
 
 function toIsoString(value: Date | null) {
   return value ? value.toISOString() : null;
@@ -437,5 +444,75 @@ export async function getPersistedOfferDetailForUser(
       createdAt: entry.createdAt.toISOString(),
       updatedAt: entry.updatedAt.toISOString(),
     })),
+  };
+}
+
+export async function deletePersistedOfferForUser(
+  userId: string,
+  offerId: string,
+): Promise<DeletedPersistedOfferResult> {
+  const offer = await db.jobOffer.findFirst({
+    where: {
+      id: offerId,
+      userId,
+    },
+    select: {
+      id: true,
+      title: true,
+      workspaceId: true,
+      companyName: true,
+      locationLabel: true,
+      employmentType: true,
+      workMode: true,
+      sourceUrl: true,
+      rawPayload: true,
+    },
+  });
+
+  if (!offer) {
+    throw new SearchOfferListingError("Offer not found", 404);
+  }
+
+  await recordSearchBehaviorEvent(
+    {
+      userId,
+      workspaceId: offer.workspaceId ?? undefined,
+    },
+    {
+      type: "OFFER_DELETED",
+      jobOfferId: offer.id,
+      companyName: offer.companyName,
+      sourceUrl: offer.sourceUrl,
+      signals: buildSignalsFromOfferRecord(offer).map((signal) => ({
+        ...signal,
+        polarity: "NEGATIVE",
+      })),
+      metadata: {
+        offerTitle: offer.title,
+      },
+    },
+  );
+
+  const deletedDraftCount = await db.$transaction(async (tx) => {
+    const deletedDrafts = await tx.emailDraft.deleteMany({
+      where: {
+        userId,
+        jobOfferId: offer.id,
+      },
+    });
+
+    await tx.jobOffer.delete({
+      where: {
+        id: offer.id,
+      },
+    });
+
+    return deletedDrafts.count;
+  });
+
+  return {
+    deletedOfferId: offer.id,
+    deletedOfferTitle: offer.title,
+    deletedDraftCount,
   };
 }

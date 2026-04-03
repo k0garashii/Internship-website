@@ -3,11 +3,16 @@ import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 
 import { db } from "@/lib/db";
+import { ensureUserWorkspace } from "@/server/application/workspace/workspace-service";
 
 import { SESSION_COOKIE_NAME } from "./constants";
 import type { AuthenticatedViewer } from "./viewer";
 
 const SESSION_DURATION_MS = 1000 * 60 * 60 * 24 * 30;
+const inflightViewerResolutions = new Map<
+  string,
+  Promise<AuthenticatedViewer | null>
+>();
 
 export type SessionContext = {
   ipAddress?: string | null;
@@ -98,13 +103,9 @@ export async function revokeSessionByToken(token: string | null | undefined) {
   });
 }
 
-export async function getCurrentViewer(): Promise<AuthenticatedViewer | null> {
-  const sessionToken = await getSessionTokenFromCookies();
-
-  if (!sessionToken) {
-    return null;
-  }
-
+async function resolveCurrentViewer(
+  sessionToken: string,
+): Promise<AuthenticatedViewer | null> {
   const now = new Date();
 
   await db.authSession.deleteMany({
@@ -139,6 +140,7 @@ export async function getCurrentViewer(): Promise<AuthenticatedViewer | null> {
         select: {
           email: true,
           fullName: true,
+          activeWorkspaceId: true,
         },
       },
     },
@@ -148,10 +150,38 @@ export async function getCurrentViewer(): Promise<AuthenticatedViewer | null> {
     return null;
   }
 
+  const workspace = await ensureUserWorkspace(session.userId);
+
   return {
     userId: session.userId,
     sessionId: session.id,
     email: session.user.email,
     fullName: session.user.fullName ?? undefined,
+    workspaceId: workspace.workspaceId,
+    workspaceSlug: workspace.slug,
+    workspaceName: workspace.name,
+    workspaceRole: workspace.role,
   };
+}
+
+export async function getCurrentViewer(): Promise<AuthenticatedViewer | null> {
+  const sessionToken = await getSessionTokenFromCookies();
+
+  if (!sessionToken) {
+    return null;
+  }
+
+  const existingResolution = inflightViewerResolutions.get(sessionToken);
+
+  if (existingResolution) {
+    return existingResolution;
+  }
+
+  const resolution = resolveCurrentViewer(sessionToken).finally(() => {
+    inflightViewerResolutions.delete(sessionToken);
+  });
+
+  inflightViewerResolutions.set(sessionToken, resolution);
+
+  return resolution;
 }

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { logServiceError } from "@/lib/observability/error-logging";
+import { cleanHumanText, isHumanReadableSnippet } from "@/lib/text/clean-text";
 
 const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -101,16 +102,7 @@ function clamp(value: number, min: number, max: number) {
 }
 
 function stripTags(value: string) {
-  return value
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, "\"")
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, " ")
-    .trim();
+  return cleanHumanText(value) ?? "";
 }
 
 function toAbsoluteUrl(baseUrl: string, value: string) {
@@ -392,7 +384,15 @@ function extractGenericHtmlOffers(baseUrl: string, html: string) {
     }
 
     const surroundingHtml = html.slice(Math.max(match.index - 220, 0), Math.min(match.index + 360, html.length));
-    const description = stripTags(surroundingHtml).replace(label, "").trim().slice(0, 320) || null;
+    const description = (() => {
+      const cleaned = cleanHumanText(surroundingHtml)?.replace(label, "").trim() ?? null;
+
+      if (!isHumanReadableSnippet(cleaned)) {
+        return null;
+      }
+
+      return cleaned ? cleaned.slice(0, 320) : null;
+    })();
     const candidate = {
       id: `html:${sourceUrl}`,
       title: label,
@@ -438,7 +438,12 @@ async function enrichHtmlOffer(offer: GenericHtmlOffer) {
     return {
       ...offer,
       title: title ? stripTags(title).slice(0, 180) : offer.title,
-      description: description ? stripTags(description).slice(0, 420) : offer.description,
+      description: (() => {
+        const cleanedDescription = description ? cleanHumanText(description) : offer.description;
+        return isHumanReadableSnippet(cleanedDescription)
+          ? cleanedDescription?.slice(0, 420) ?? null
+          : offer.description;
+      })(),
     };
   } catch {
     return offer;
@@ -475,7 +480,7 @@ async function fetchGenericCareerPageOffers(careerPageUrl: string) {
       locationLabel: null,
       department: null,
       publishedAt: null,
-      description: offer.description,
+      description: isHumanReadableSnippet(offer.description) ? offer.description : null,
       sourceUrl: offer.sourceUrl,
       sourceLabel: "Page carriere",
       sourceKind: "CAREER_PAGE_HTML",

@@ -253,53 +253,13 @@ export function ProfileOnboardingForm({
                   : "rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-900"
               }
             >
-              {hasUnsavedChanges ? "Modifications non sauvegardees" : "Profil a jour"}
+            {hasUnsavedChanges ? "Modifications non sauvegardees" : "Profil a jour"}
             </span>
             {savedAt ? (
               <span className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-900">
                 Sauvegarde {savedAt}
               </span>
             ) : null}
-          </div>
-        </div>
-        <div className="grid gap-3 rounded-[1.25rem] border border-line bg-white/70 p-4 md:grid-cols-2 xl:grid-cols-4">
-          <div className="space-y-1">
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted">
-              Nom en base
-            </p>
-            <p className="text-sm font-medium text-foreground">
-              {savedDraft.fullName || "Non renseigne"}
-            </p>
-          </div>
-          <div className="space-y-1">
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted">
-              Titre en base
-            </p>
-            <p className="text-sm font-medium text-foreground">
-              {savedDraft.profile.headline || "Non renseigne"}
-            </p>
-          </div>
-          <div className="space-y-1">
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted">
-              Zone en base
-            </p>
-            <p className="text-sm font-medium text-foreground">
-              {savedDraft.profile.city || "Non renseignee"}
-              {savedDraft.profile.countryCode ? `, ${savedDraft.profile.countryCode}` : ""}
-            </p>
-          </div>
-          <div className="space-y-1">
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted">
-              Fenetre en base
-            </p>
-            <p className="text-sm font-medium text-foreground">
-              {savedDraft.profile.availabilityDate
-                ? formatDateLabel(savedDraft.profile.availabilityDate)
-                : "Non renseignee"}
-              {savedDraft.profile.availabilityEndDate
-                ? ` -> ${formatDateLabel(savedDraft.profile.availabilityEndDate)}`
-                : ""}
-            </p>
           </div>
         </div>
         {fieldErrorCount > 0 ? (
@@ -439,14 +399,6 @@ export function ProfileOnboardingForm({
                 </option>
               ))}
             </select>
-            <SavedFieldHint
-              label="Valeur sauvegardee :"
-              value={
-                experienceLevelOptions.find(
-                  (option) => option.value === savedDraft.profile.experienceLevel,
-                )?.label ?? ""
-              }
-            />
           </label>
           <label className="space-y-2">
             <span className="block text-sm font-medium text-foreground">
@@ -459,10 +411,6 @@ export function ProfileOnboardingForm({
               className="w-full rounded-2xl border border-line bg-white/80 px-4 py-3 outline-none transition focus:border-slate-900"
             />
             <FieldErrorList messages={fieldErrors.availabilityDate} />
-            <SavedFieldHint
-              label="Date en base :"
-              value={formatDateLabel(savedDraft.profile.availabilityDate)}
-            />
           </label>
           <label className="space-y-2">
             <span className="block text-sm font-medium text-foreground">
@@ -475,10 +423,6 @@ export function ProfileOnboardingForm({
               className="w-full rounded-2xl border border-line bg-white/80 px-4 py-3 outline-none transition focus:border-slate-900"
             />
             <FieldErrorList messages={fieldErrors.availabilityEndDate} />
-            <SavedFieldHint
-              label="Date en base :"
-              value={formatDateLabel(savedDraft.profile.availabilityEndDate)}
-            />
           </label>
           <label className="space-y-2">
             <span className="block text-sm font-medium text-foreground">Ville</span>
@@ -528,10 +472,6 @@ export function ProfileOnboardingForm({
               "TypeScript, Python, Prisma, data analysis...",
             )}
           />
-          <SavedFieldHint
-            label="Competences en base :"
-            value={formatListPreview(savedDraft.profile.skills)}
-          />
           <FieldErrorList messages={fieldErrors.skills} />
         </label>
 
@@ -548,10 +488,6 @@ export function ProfileOnboardingForm({
                 "Backend engineer intern, software engineer...",
               )}
             />
-            <SavedFieldHint
-              label="Roles en base :"
-              value={formatListPreview(savedDraft.profile.targetRoles)}
-            />
             <FieldErrorList messages={fieldErrors.targetRoles} />
           </label>
           <label className="space-y-2">
@@ -567,10 +503,6 @@ export function ProfileOnboardingForm({
                 savedDraft.profile.searchKeywords,
                 "automation, backend, api, typescript...",
               )}
-            />
-            <SavedFieldHint
-              label="Mots cles en base :"
-              value={formatListPreview(savedDraft.profile.searchKeywords)}
             />
             <FieldErrorList messages={fieldErrors.searchKeywords} />
           </label>
@@ -590,10 +522,6 @@ export function ProfileOnboardingForm({
                 "Paris, Saclay, Lyon...",
               )}
             />
-            <SavedFieldHint
-              label="Zones en base :"
-              value={formatListPreview(savedDraft.profile.preferredLocations)}
-            />
             <FieldErrorList messages={fieldErrors.preferredLocations} />
           </label>
           <label className="space-y-2">
@@ -611,10 +539,6 @@ export function ProfileOnboardingForm({
                 savedDraft.profile.preferredDomains,
                 "Deeptech, energie, outils developpeur...",
               )}
-            />
-            <SavedFieldHint
-              label="Domaines en base :"
-              value={formatListPreview(savedDraft.profile.preferredDomains)}
             />
             <FieldErrorList messages={fieldErrors.preferredDomains} />
           </label>
@@ -719,10 +643,6 @@ export function ProfileOnboardingForm({
               "Ex: equipe produit, stack TypeScript, pas de secteur defense...",
             )}
           />
-          <SavedFieldHint
-            label="Notes en base :"
-            value={formatListPreview(savedDraft.profile.preferencesNotes)}
-          />
           <FieldErrorList messages={fieldErrors.preferencesNotes} />
         </label>
 
@@ -764,10 +684,6 @@ export function ProfileOnboardingForm({
               {isSubmitting ? "Enregistrement..." : "Enregistrer le profil"}
             </button>
           </div>
-          <p className="text-xs leading-6 text-muted">
-            Les contraintes restent ici. Les preferences de recherche sont editees a
-            part pour eviter les doublons.
-          </p>
         </div>
       </div>
     </form>

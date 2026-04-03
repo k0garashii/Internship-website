@@ -9,6 +9,7 @@ import {
 } from "@/lib/email/forwarding";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   const viewer = await getCurrentViewer();

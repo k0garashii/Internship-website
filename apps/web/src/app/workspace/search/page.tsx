@@ -88,36 +88,42 @@ function SearchPlanOverview({ plan }: { plan: SearchQueryPlan }) {
                     {query.targetRole}
                   </p>
                 </div>
-                <div className="rounded-[1.25rem] border border-line bg-card p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted">Domaine</p>
-                  <p className="mt-2 text-sm font-medium text-foreground">
-                    {query.domain ?? "Sans filtre domaine"}
-                  </p>
-                </div>
-                <div className="rounded-[1.25rem] border border-line bg-card p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted">Zone</p>
-                  <p className="mt-2 text-sm font-medium text-foreground">
-                    {query.location ?? "Aucune precision de zone"}
-                  </p>
-                </div>
+                {query.domain ? (
+                  <div className="rounded-[1.25rem] border border-line bg-card p-4">
+                    <p className="text-xs uppercase tracking-[0.16em] text-muted">Domaine</p>
+                    <p className="mt-2 text-sm font-medium text-foreground">
+                      {query.domain}
+                    </p>
+                  </div>
+                ) : null}
+                {query.location ? (
+                  <div className="rounded-[1.25rem] border border-line bg-card p-4">
+                    <p className="text-xs uppercase tracking-[0.16em] text-muted">Zone</p>
+                    <p className="mt-2 text-sm font-medium text-foreground">
+                      {query.location}
+                    </p>
+                  </div>
+                ) : null}
               </div>
 
               <div className="mt-4 space-y-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted">
-                    Mots cles injectes
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {query.focusKeywords.map((keyword) => (
-                      <span
-                        key={keyword}
-                        className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground"
-                      >
-                        {keyword}
-                      </span>
-                    ))}
+                {query.focusKeywords.length > 0 ? (
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.16em] text-muted">
+                      Mots cles injectes
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {query.focusKeywords.map((keyword) => (
+                        <span
+                          key={keyword}
+                          className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground"
+                        >
+                          {keyword}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                ) : null}
 
                 <div className="rounded-[1.25rem] border border-[rgba(82,71,101,0.18)] bg-foreground px-4 py-3 text-sm leading-7 text-white/90">
                   {query.queryText}
@@ -216,7 +222,8 @@ export default async function SearchPage() {
         </h1>
         <div className="status-row mt-6">
           <div className="status-pill status-pill-info">Entreprises et pages carrieres</div>
-          <div className="status-pill status-pill-success">Offres personnalisées</div>
+          <div className="status-pill status-pill-success">Offres web multi-sources</div>
+          <div className="status-pill status-pill-accent">Recherche approfondie internet</div>
         </div>
       </section>
 

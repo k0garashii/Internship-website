@@ -36,9 +36,9 @@ export type OfferProfileMatch = {
 
 export type SearchDiscoveryOffer = {
   id: string;
-  provider: "wttj";
-  sourceKind: "JOB_BOARD";
-  sourceSite: "Welcome to the Jungle";
+  provider: string;
+  sourceKind: "JOB_BOARD" | "COMPANY_CAREERS";
+  sourceSite: string;
   title: string;
   companyName: string;
   companySlug: string | null;
@@ -68,9 +68,9 @@ export type SearchDiscoveryQueryExecution = {
   focusKeywords: string[];
   queryText: string;
   requestedQueryText: string;
-  provider: "wttj";
-  providerLabel: "Welcome to the Jungle";
-  language: "fr" | "en";
+  provider: string;
+  providerLabel: string;
+  language: "fr" | "en" | "multi";
   filters: string[];
   totalHits: number;
   returnedHits: number;
@@ -242,9 +242,10 @@ export type SearchDiscoveryResult = {
   executedQueryCount: number;
   offerCount: number;
   providers: Array<{
-    id: "wttj";
-    label: "Welcome to the Jungle";
-    language: "fr" | "en";
+    id: string;
+    label: string;
+    language: "fr" | "en" | "multi";
+    offerCount: number;
   }>;
   queryExecutions: SearchDiscoveryQueryExecution[];
   warnings: string[];

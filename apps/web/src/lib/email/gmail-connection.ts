@@ -26,6 +26,7 @@ import {
   type OfferMailboxSignalSnapshot,
 } from "@/lib/email/mailbox-sync";
 import { logServiceEvent } from "@/lib/observability/error-logging";
+import { getRequiredActiveWorkspaceIdForUser } from "@/server/application/workspace/workspace-service";
 
 const DEFAULT_GMAIL_SYNC_QUERY = "in:anywhere newer_than:120d -category:promotions -category:social";
 
@@ -202,6 +203,7 @@ export async function upsertGmailConnectionFromGoogleOauth(options: {
   userInfo: GoogleUserInfo;
   tokens: GoogleTokenPayload;
 }) {
+  const workspaceId = await getRequiredActiveWorkspaceIdForUser(options.userId);
   const requestedScopes = getPrimaryGoogleScopes(options.scopeSet).join(" ");
   const incomingScopes = mergeScopes(options.tokens.scope, requestedScopes);
   const expiresAt = buildExpiryDate(options.tokens);
@@ -294,6 +296,7 @@ export async function upsertGmailConnectionFromGoogleOauth(options: {
       },
       update: {
         authAccountId,
+        workspaceId,
         label: "Boite Gmail",
         status: EmailIngestionConnectionStatus.ACTIVE,
         mailboxAddress: options.userInfo.email,
@@ -302,6 +305,7 @@ export async function upsertGmailConnectionFromGoogleOauth(options: {
       },
       create: {
         userId: options.userId,
+        workspaceId,
         authAccountId,
         sourceType: EmailIngestionSourceType.GMAIL,
         label: "Boite Gmail",

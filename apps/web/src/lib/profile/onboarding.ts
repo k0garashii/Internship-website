@@ -10,7 +10,7 @@ import { db } from "@/lib/db";
 import type { AuthenticatedViewer } from "@/lib/auth/viewer";
 import { assertAuthenticatedViewer } from "@/lib/auth/viewer";
 import { logServiceError } from "@/lib/observability/error-logging";
-import { refreshProfileEnrichment } from "@/lib/profile/enrichment";
+import { requireViewerWorkspaceId } from "@/lib/security/ownership";
 import {
   buildProfileConstraints,
   normalizeListItem,
@@ -19,6 +19,7 @@ import {
   splitMultilineOrCommaList,
   type ProfileOnboardingInput,
 } from "@/lib/profile/schema";
+import { enqueueProfileEnrichmentRefresh } from "@/server/facades/profile-facade";
 
 export class ProfileOnboardingError extends Error {
   constructor(
@@ -46,7 +47,14 @@ export async function saveProfileOnboarding(
   }
 
   const data = parsed.data;
-  const skills = splitMultilineOrCommaList(data.skills);
+  const workspaceId = requireViewerWorkspaceId(authenticatedViewer);
+  const skills = Array.from(
+    new Map(
+      splitMultilineOrCommaList(data.skills)
+        .map((skill) => [slugify(skill), skill] as const)
+        .filter(([normalizedName]) => Boolean(normalizedName)),
+    ).values(),
+  );
   const targetRoles = splitMultilineOrCommaList(data.targetRoles);
   const preferredLocations = splitMultilineOrCommaList(data.preferredLocations);
   const preferredDomains = splitMultilineOrCommaList(data.preferredDomains);
@@ -110,6 +118,7 @@ export async function saveProfileOnboarding(
       },
       data: {
         fullName: data.fullName,
+        activeWorkspaceId: workspaceId,
       },
     });
 
@@ -118,6 +127,7 @@ export async function saveProfileOnboarding(
         userId: authenticatedViewer.userId,
       },
       update: {
+        workspaceId,
         headline: data.headline || null,
         summary: data.summary || null,
         school: data.school || null,
@@ -139,6 +149,7 @@ export async function saveProfileOnboarding(
       },
       create: {
         userId: authenticatedViewer.userId,
+        workspaceId,
         headline: data.headline || null,
         summary: data.summary || null,
         school: data.school || null,
@@ -190,6 +201,7 @@ export async function saveProfileOnboarding(
       await tx.searchTarget.createMany({
         data: targetRoles.map((target, index) => ({
           userId: authenticatedViewer.userId,
+          workspaceId,
           title: target,
           normalizedTitle: slugify(target),
           source: TargetSource.MANUAL,
@@ -210,6 +222,7 @@ export async function saveProfileOnboarding(
       await tx.searchLocation.createMany({
         data: preferredLocations.map((location, index) => ({
           userId: authenticatedViewer.userId,
+          workspaceId,
           label: location,
           normalizedLabel: slugify(location),
           countryCode: data.countryCode || null,
@@ -230,6 +243,7 @@ export async function saveProfileOnboarding(
       await tx.searchDomain.createMany({
         data: validatedDomainSelections.map((domain) => ({
           userId: authenticatedViewer.userId,
+          workspaceId,
           label: domain.label,
           normalizedLabel: domain.normalizedLabel,
           source: domain.source,
@@ -245,15 +259,16 @@ export async function saveProfileOnboarding(
   });
 
   try {
-    await refreshProfileEnrichment(authenticatedViewer.userId);
+    await enqueueProfileEnrichmentRefresh(authenticatedViewer);
   } catch (error) {
     logServiceError({
       level: "warn",
       scope: "profile/onboarding",
-      message: "Profile enrichment refresh failed after onboarding save",
+      message: "Profile enrichment job enqueue failed after onboarding save",
       error,
       metadata: {
         userId: authenticatedViewer.userId,
+        workspaceId,
       },
     });
   }

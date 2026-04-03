@@ -1,10 +1,20 @@
 {
   "name": "internship-scrapper",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "npm --prefix apps/web run dev",
     "build": "npm --prefix apps/web run build",
     "lint": "npm --prefix apps/web run lint",
-    "test": "npm --prefix apps/web run test"
+    "test": "npm --prefix apps/web run test",
+    "worker": "npm --prefix apps/web run worker",
+    "jobs:drain": "npm --prefix apps/web run jobs:drain",
+    "personas:seed": "npm --prefix apps/web run personas:seed",
+    "personas:notion": "npm --prefix apps/web run personas:notion",
+    "personas:evaluate": "npm --prefix apps/web run personas:evaluate",
+    "ci:check": "npm --prefix apps/web run ci:check"
   }
 }

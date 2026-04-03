@@ -2,11 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getCurrentViewer } from "@/lib/auth/session";
-import {
-  generateOfferEmailDraft,
-  OfferEmailDraftError,
-} from "@/lib/email/drafts";
+import { OfferEmailDraftError } from "@/lib/email/drafts";
 import { logRouteError } from "@/lib/observability/error-logging";
+import { FeatureAccessError } from "@/server/application/entitlements/entitlement-service";
+import { generateOfferDraftForViewer } from "@/server/facades/email-facade";
 
 const generateDraftRequestSchema = z.object({
   jobOfferId: z.string().trim().min(1),
@@ -70,13 +69,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    const draft = await generateOfferEmailDraft(viewer.userId, parsed.data.jobOfferId);
+    const draft = await generateOfferDraftForViewer(viewer, parsed.data.jobOfferId);
 
     return NextResponse.json(draft, {
       status: 200,
     });
   } catch (error) {
-    if (error instanceof OfferEmailDraftError) {
+    if (error instanceof OfferEmailDraftError || error instanceof FeatureAccessError) {
       logRouteError({
         level: error.status >= 500 ? "error" : "warn",
         route: "/api/email/drafts/generate",

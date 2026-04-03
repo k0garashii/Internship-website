@@ -80,7 +80,7 @@ export function OfferDraftGenerator({ jobOfferId }: Props) {
         <div className="space-y-3 rounded-[1rem] border border-line bg-white p-4">
           <div className="flex flex-wrap gap-2">
             <span className="rounded-full border border-line bg-slate-50 px-3 py-1 text-xs font-medium text-foreground">
-              {draft.provider === "gemini" ? "Gemini" : "Fallback"}
+              {draft.provider === "gemini" ? "Gemini" : "Mode secours"}
             </span>
             <span className="rounded-full border border-line bg-slate-50 px-3 py-1 text-xs font-medium text-foreground">
               {draft.generatedBy}

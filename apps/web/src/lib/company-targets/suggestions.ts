@@ -5,6 +5,7 @@ import {
   type CompanyWatchlistFile,
 } from "@/lib/config/company-watchlist";
 import type { PersonalProfileFile } from "@/lib/config/personal-profile";
+import type { InferredSearchPreference } from "@/lib/profile/personalization-model";
 import type { SearchTargetsFile } from "@/lib/config/search-targets";
 import { logServiceError } from "@/lib/observability/error-logging";
 import { normalizeListItem } from "@/lib/profile/schema";
@@ -57,6 +58,7 @@ type UserSignals = {
   locationText: string;
   targetRoleText: string;
   domainText: string;
+  companyText: string;
   countryCodes: string[];
   experienceLevel: string | null;
 };
@@ -268,7 +270,22 @@ function uniqueList(values: Array<string | null | undefined>) {
 function buildUserSignals(
   personalProfile: PersonalProfileFile,
   searchTargets: SearchTargetsFile,
+  inferredPreferences: InferredSearchPreference[] = [],
 ): UserSignals {
+  const positiveInferred = inferredPreferences.filter((preference) => preference.polarity === "POSITIVE");
+  const inferredRoles = positiveInferred
+    .filter((preference) => preference.axis === "ROLE")
+    .map((preference) => preference.value);
+  const inferredDomains = positiveInferred
+    .filter((preference) => preference.axis === "DOMAIN")
+    .map((preference) => preference.value);
+  const inferredKeywords = positiveInferred
+    .filter((preference) => preference.axis === "KEYWORD" || preference.axis === "TECHNOLOGY")
+    .map((preference) => preference.value);
+  const inferredCompanies = positiveInferred
+    .filter((preference) => preference.axis === "COMPANY")
+    .map((preference) => preference.value);
+
   const fullText = [
     personalProfile.profile.headline,
     personalProfile.profile.summary,
@@ -277,6 +294,10 @@ function buildUserSignals(
     ...searchTargets.keywords,
     ...searchTargets.preferredDomains.map((domain) => domain.label),
     ...searchTargets.preferredLocations.map((location) => location.label),
+    ...inferredRoles,
+    ...inferredDomains,
+    ...inferredKeywords,
+    ...inferredCompanies,
     personalProfile.profile.city,
   ]
     .filter(Boolean)
@@ -294,10 +315,17 @@ function buildUserSignals(
     targetRoleText: uniqueList([
       personalProfile.profile.headline,
       ...searchTargets.targets.map((target) => target.title),
+      ...inferredRoles,
     ])
       .join(" ")
       .toLowerCase(),
-    domainText: uniqueList(searchTargets.preferredDomains.map((domain) => domain.label))
+    domainText: uniqueList([
+      ...searchTargets.preferredDomains.map((domain) => domain.label),
+      ...inferredDomains,
+    ])
+      .join(" ")
+      .toLowerCase(),
+    companyText: uniqueList(inferredCompanies)
       .join(" ")
       .toLowerCase(),
     countryCodes: uniqueList([
@@ -317,6 +345,7 @@ function scoreEntry(entry: CompanyCatalogEntry, signals: UserSignals) {
   const roleMatches = collectMatches(entry.roleTokens, signals.targetRoleText || signals.fullText);
   const keywordMatches = collectMatches(entry.keywordTokens, signals.fullText);
   const locationMatches = collectMatches(entry.locationTokens, signals.locationText);
+  const explicitCompanyMatch = signals.companyText.includes(entry.companyName.toLowerCase());
   const countryMatch = entry.countryCodes.some((code) => signals.countryCodes.includes(code));
   const earlyCareerBoost =
     entry.earlyCareerFriendly &&
@@ -327,6 +356,7 @@ function scoreEntry(entry: CompanyCatalogEntry, signals: UserSignals) {
     roleMatches.length * 12 +
     Math.min(keywordMatches.length, 4) * 6 +
     Math.min(locationMatches.length, 2) * 7 +
+    (explicitCompanyMatch ? 18 : 0) +
     (countryMatch ? 8 : 0) +
     (earlyCareerBoost ? 8 : 0);
 
@@ -344,6 +374,7 @@ function scoreEntry(entry: CompanyCatalogEntry, signals: UserSignals) {
       roleMatches.length > 0 ? `coherence avec les roles: ${roleMatches.join(", ")}` : null,
       keywordMatches.length > 0 ? `mots cles detectes: ${keywordMatches.join(", ")}` : null,
       locationMatches.length > 0 ? `presence geographique: ${locationMatches.join(", ")}` : null,
+      explicitCompanyMatch ? "interaction implicite deja observee avec cette entreprise" : null,
       countryMatch ? "presence dans les zones cibles" : null,
       earlyCareerBoost ? "structure pertinente pour un profil en debut de parcours" : null,
     ]),
@@ -358,8 +389,9 @@ function buildFallbackSuggestions(
   personalProfile: PersonalProfileFile,
   searchTargets: SearchTargetsFile,
   companyWatchlist: CompanyWatchlistFile,
+  inferredPreferences: InferredSearchPreference[] = [],
 ) {
-  const signals = buildUserSignals(personalProfile, searchTargets);
+  const signals = buildUserSignals(personalProfile, searchTargets, inferredPreferences);
   const tracked = new Set(companyWatchlist.items.map((item) => item.normalizedName));
 
   const ranked = companyCatalog
@@ -430,6 +462,7 @@ async function generateWithGemini(
   personalProfile: PersonalProfileFile,
   searchTargets: SearchTargetsFile,
   companyWatchlist: CompanyWatchlistFile,
+  inferredPreferences: InferredSearchPreference[] = [],
 ) {
   const apiKey =
     process.env.GEMINI_API_KEY?.trim() ||
@@ -442,6 +475,21 @@ async function generateWithGemini(
 
   const model = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
   const prompt = buildCompanyTargetPrompt(personalProfile, searchTargets, companyWatchlist);
+  const enrichedPrompt = [
+    prompt,
+    "",
+    "Profil implicite utile a prendre en compte sans ecraser les preferences declarees:",
+    JSON.stringify(
+      inferredPreferences.map((preference) => ({
+        axis: preference.axis,
+        value: preference.value,
+        score: preference.score,
+        confidence: preference.confidence,
+      })),
+      null,
+      2,
+    ),
+  ].join("\n");
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
@@ -454,7 +502,7 @@ async function generateWithGemini(
         contents: [
           {
             role: "user",
-            parts: [{ text: prompt }],
+            parts: [{ text: enrichedPrompt }],
           },
         ],
         generationConfig: {
@@ -541,12 +589,14 @@ export async function generateCompanyTargetSuggestions(
   personalProfile: PersonalProfileFile,
   searchTargets: SearchTargetsFile,
   companyWatchlist: CompanyWatchlistFile,
+  inferredPreferences: InferredSearchPreference[] = [],
 ): Promise<CompanyTargetSuggestionResult> {
   try {
     const geminiResult = await generateWithGemini(
       personalProfile,
       searchTargets,
       companyWatchlist,
+      inferredPreferences,
     );
 
     if (geminiResult.suggestions.length > 0) {
@@ -565,7 +615,12 @@ export async function generateCompanyTargetSuggestions(
   }
 
   return {
-    ...buildFallbackSuggestions(personalProfile, searchTargets, companyWatchlist),
+    ...buildFallbackSuggestions(
+      personalProfile,
+      searchTargets,
+      companyWatchlist,
+      inferredPreferences,
+    ),
     provider: "fallback",
   };
 }

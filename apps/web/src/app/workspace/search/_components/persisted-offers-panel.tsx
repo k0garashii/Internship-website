@@ -1,8 +1,12 @@
+"use client";
+
 import Link from "next/link";
 
 import type { PersistedOfferListResult } from "@/lib/search/types";
+import { DeletePersistedOfferButton } from "./delete-persisted-offer-button";
 import { OfferFeedbackControls } from "./offer-feedback-controls";
 import { OfferDraftGenerator } from "./offer-draft-generator";
+import { trackSearchInteraction } from "./search-interactions";
 
 type Props = {
   result: PersistedOfferListResult;
@@ -38,10 +42,16 @@ const searchRunLabels: Record<string, string> = {
 
 function formatDateTime(value: string | null) {
   if (!value) {
-    return "Inconnue";
+    return null;
   }
 
-  return new Date(value).toLocaleString("fr-FR", {
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toLocaleString("fr-FR", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -64,7 +74,7 @@ function formatFeedbackLabel(value: string | null) {
 
 function formatSearchRunLabel(value: string | null) {
   if (!value) {
-    return "Aucune recherche";
+    return null;
   }
 
   return searchRunLabels[value] ?? value;
@@ -76,7 +86,7 @@ export function PersistedOffersPanel({ result }: Props) {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-3">
           <p className="app-kicker">
-            Offres persistees
+            Offres enregistrees
           </p>
           <h2 className="text-2xl font-semibold tracking-tight text-foreground">
             Offres deja stockees avec leur etat courant.
@@ -107,7 +117,19 @@ export function PersistedOffersPanel({ result }: Props) {
 
       {result.offers.length > 0 ? (
         <div className="mt-6 space-y-4">
-          {result.offers.map((offer) => (
+          {result.offers.map((offer) => {
+            const lastSeenAt = formatDateTime(offer.lastSeenAt);
+            const latestSearchStatus = formatSearchRunLabel(offer.latestSearchStatus);
+            const postedAt = formatDateTime(offer.postedAt);
+            const firstSeenAt = formatDateTime(offer.firstSeenAt);
+            const hasLatestMatch =
+              offer.latestMatchScore !== null || offer.latestRank !== null;
+            const hasLatestSearch =
+              Boolean(offer.latestSearchLabel) || Boolean(latestSearchStatus);
+            const hasContextCard =
+              Boolean(offer.matchExplanation) || Boolean(offer.latestFeedbackNote);
+
+            return (
             <article
               key={offer.id}
               className="rounded-[1.5rem] border border-line bg-white/70 p-5"
@@ -121,9 +143,11 @@ export function PersistedOffersPanel({ result }: Props) {
                     <span className="status-pill status-pill-success">
                       {formatStatusLabel(offer.lifecycleStatus)}
                     </span>
-                    <span className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900">
-                      {formatFeedbackLabel(offer.latestFeedbackDecision)}
-                    </span>
+                    {offer.latestFeedbackDecision ? (
+                      <span className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900">
+                        {formatFeedbackLabel(offer.latestFeedbackDecision)}
+                      </span>
+                    ) : null}
                     {offer.isShortlisted ? (
                       <span className="status-pill status-pill-accent">
                         Shortlist
@@ -133,6 +157,24 @@ export function PersistedOffersPanel({ result }: Props) {
                   <div>
                     <Link
                       href={`/workspace/search/offers/${offer.id}`}
+                      onClick={() => {
+                        void trackSearchInteraction({
+                          type: "SEARCH_RESULT_OPENED",
+                          jobOfferId: offer.id,
+                          sourceUrl: offer.sourceUrl,
+                          offerContext: {
+                            title: offer.title,
+                            companyName: offer.companyName,
+                            locationLabel: offer.locationLabel,
+                            matchedQueryLabels: [],
+                            matchedKeywords: [],
+                          },
+                          metadata: {
+                            ctaKind: "offer_detail",
+                            origin: "persisted_offers_panel",
+                          },
+                        });
+                      }}
                       className="text-xl font-semibold tracking-tight text-foreground transition hover:text-[var(--accent)]"
                     >
                       {offer.title}
@@ -144,11 +186,31 @@ export function PersistedOffersPanel({ result }: Props) {
                   </div>
                 </div>
                 <div className="flex flex-col items-start gap-3 lg:items-end">
-                  <span className="text-sm text-muted">
-                    Derniere vue le {formatDateTime(offer.lastSeenAt)}
-                  </span>
+                  {lastSeenAt ? (
+                    <span className="text-sm text-muted">
+                      Derniere vue le {lastSeenAt}
+                    </span>
+                  ) : null}
                   <Link
                     href={`/workspace/search/offers/${offer.id}`}
+                    onClick={() => {
+                      void trackSearchInteraction({
+                        type: "SEARCH_RESULT_OPENED",
+                        jobOfferId: offer.id,
+                        sourceUrl: offer.sourceUrl,
+                        offerContext: {
+                          title: offer.title,
+                          companyName: offer.companyName,
+                          locationLabel: offer.locationLabel,
+                          matchedQueryLabels: [],
+                          matchedKeywords: [],
+                        },
+                        metadata: {
+                          ctaKind: "offer_detail",
+                          origin: "persisted_offers_panel",
+                        },
+                      });
+                    }}
                     className="inline-flex items-center justify-center rounded-full border border-line px-5 py-3 text-sm font-medium text-foreground transition hover:-translate-y-0.5"
                   >
                     Voir le detail
@@ -157,70 +219,112 @@ export function PersistedOffersPanel({ result }: Props) {
                     href={offer.sourceUrl}
                     target="_blank"
                     rel="noreferrer"
+                    onClick={() => {
+                      void trackSearchInteraction({
+                        type: "SEARCH_RESULT_OPENED",
+                        jobOfferId: offer.id,
+                        sourceUrl: offer.sourceUrl,
+                        offerContext: {
+                          title: offer.title,
+                          companyName: offer.companyName,
+                          locationLabel: offer.locationLabel,
+                          matchedQueryLabels: [],
+                          matchedKeywords: [],
+                        },
+                        metadata: {
+                          ctaKind: "external_offer",
+                          origin: "persisted_offers_panel",
+                        },
+                      });
+                    }}
                     className="inline-flex items-center justify-center rounded-full bg-foreground px-5 py-3 text-sm font-medium text-white transition hover:-translate-y-0.5"
                   >
                     Ouvrir l offre
                   </a>
+                  <DeletePersistedOfferButton
+                    offerId={offer.id}
+                    offerTitle={offer.title}
+                  />
                 </div>
               </div>
 
               <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-[1.25rem] border border-line bg-card p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted">
-                    Dernier match
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-foreground">
-                    {offer.latestMatchScore ?? "n/a"}
-                    {offer.latestMatchScore !== null ? "/100" : ""}
-                  </p>
-                  <p className="mt-1 text-xs text-muted">
-                    Rang {offer.latestRank ?? "n/a"}
-                  </p>
-                </div>
-                <div className="rounded-[1.25rem] border border-line bg-card p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted">
-                    Derniere recherche
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-foreground">
-                    {offer.latestSearchLabel ?? "Aucune recherche"}
-                  </p>
-                  <p className="mt-1 text-xs text-muted">
-                    {formatSearchRunLabel(offer.latestSearchStatus)}
-                  </p>
-                </div>
-                <div className="rounded-[1.25rem] border border-line bg-card p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted">Publiee</p>
-                  <p className="mt-2 text-sm font-medium text-foreground">
-                    {formatDateTime(offer.postedAt)}
-                  </p>
-                </div>
-                <div className="rounded-[1.25rem] border border-line bg-card p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted">
-                    Premiere apparition
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-foreground">
-                    {formatDateTime(offer.firstSeenAt)}
-                  </p>
-                </div>
+                {hasLatestMatch ? (
+                  <div className="rounded-[1.25rem] border border-line bg-card p-4">
+                    <p className="text-xs uppercase tracking-[0.16em] text-muted">
+                      Dernier match
+                    </p>
+                    {offer.latestMatchScore !== null ? (
+                      <p className="mt-2 text-lg font-semibold text-foreground">
+                        {offer.latestMatchScore}/100
+                      </p>
+                    ) : null}
+                    {offer.latestRank !== null ? (
+                      <p className="mt-1 text-xs text-muted">
+                        Rang {offer.latestRank}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+                {hasLatestSearch ? (
+                  <div className="rounded-[1.25rem] border border-line bg-card p-4">
+                    <p className="text-xs uppercase tracking-[0.16em] text-muted">
+                      Derniere recherche
+                    </p>
+                    {offer.latestSearchLabel ? (
+                      <p className="mt-2 text-sm font-medium text-foreground">
+                        {offer.latestSearchLabel}
+                      </p>
+                    ) : null}
+                    {latestSearchStatus ? (
+                      <p className="mt-1 text-xs text-muted">
+                        {latestSearchStatus}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+                {postedAt ? (
+                  <div className="rounded-[1.25rem] border border-line bg-card p-4">
+                    <p className="text-xs uppercase tracking-[0.16em] text-muted">Publiee</p>
+                    <p className="mt-2 text-sm font-medium text-foreground">
+                      {postedAt}
+                    </p>
+                  </div>
+                ) : null}
+                {firstSeenAt ? (
+                  <div className="rounded-[1.25rem] border border-line bg-card p-4">
+                    <p className="text-xs uppercase tracking-[0.16em] text-muted">
+                      Premiere apparition
+                    </p>
+                    <p className="mt-2 text-sm font-medium text-foreground">
+                      {firstSeenAt}
+                    </p>
+                  </div>
+                ) : null}
               </div>
 
-              <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_0.9fr]">
-                <div className="rounded-[1.25rem] border border-line bg-card p-4">
-                  <p className="text-sm font-medium text-foreground">
-                    Justification du dernier match
-                  </p>
-                  <p className="mt-2 text-sm leading-7 text-foreground">
-                    {offer.matchExplanation ?? "Aucune justification stockee pour cette offre."}
-                  </p>
+              {hasContextCard ? (
+                <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_0.9fr]">
+                  {offer.matchExplanation ? (
+                    <div className="rounded-[1.25rem] border border-line bg-card p-4">
+                      <p className="text-sm font-medium text-foreground">
+                        Justification du dernier match
+                      </p>
+                      <p className="mt-2 text-sm leading-7 text-foreground">
+                        {offer.matchExplanation}
+                      </p>
+                    </div>
+                  ) : null}
+                  {offer.latestFeedbackNote ? (
+                    <div className="rounded-[1.25rem] border border-line bg-card p-4">
+                      <p className="text-sm font-medium text-foreground">Retour utilisateur</p>
+                      <p className="mt-2 text-sm leading-7 text-foreground">
+                        {offer.latestFeedbackNote}
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
-                <div className="rounded-[1.25rem] border border-line bg-card p-4">
-                  <p className="text-sm font-medium text-foreground">Retour utilisateur</p>
-                  <p className="mt-2 text-sm leading-7 text-foreground">
-                    {offer.latestFeedbackNote ??
-                      "Aucun retour manuel n a encore ete enregistre pour cette offre."}
-                  </p>
-                </div>
-              </div>
+              ) : null}
 
               <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_0.95fr]">
                 <OfferFeedbackControls
@@ -231,7 +335,8 @@ export function PersistedOffersPanel({ result }: Props) {
                 <OfferDraftGenerator jobOfferId={offer.id} />
               </div>
             </article>
-          ))}
+          );
+          })}
         </div>
       ) : (
         <article className="mt-6 rounded-[1.5rem] border border-dashed border-line bg-white/70 p-6 text-sm leading-7 text-muted">

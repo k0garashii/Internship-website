@@ -1,10 +1,13 @@
 import Link from "next/link";
 
 import { getCurrentViewer } from "@/lib/auth/session";
+import { logServiceError } from "@/lib/observability/error-logging";
 import {
   companyOffersPageParamsSchema,
   fetchCompanyCareerOffers,
 } from "@/lib/company-targets/offers";
+import { buildSignalsFromCompanyTarget, recordSearchBehaviorEvent } from "@/server/application/personalization/search-behavior-service";
+import { TrackedSearchLink } from "../../_components/tracked-search-link";
 
 type Props = {
   params: Promise<{
@@ -28,13 +31,13 @@ function pickSearchParam(
 
 function formatPublishedAt(value: string | null) {
   if (!value) {
-    return "Date non fournie";
+    return null;
   }
 
   const parsed = new Date(value);
 
   if (Number.isNaN(parsed.getTime())) {
-    return value;
+    return null;
   }
 
   return parsed.toLocaleDateString("fr-FR", {
@@ -45,7 +48,7 @@ function formatPublishedAt(value: string | null) {
 }
 
 export default async function CompanyOffersPage({ params, searchParams }: Props) {
-  await params;
+  const { companySlug } = await params;
   const viewer = await getCurrentViewer();
 
   if (!viewer) {
@@ -85,6 +88,51 @@ export default async function CompanyOffersPage({ params, searchParams }: Props)
 
   const result = await fetchCompanyCareerOffers(parsed.data);
 
+  try {
+    const baseSignals = buildSignalsFromCompanyTarget({
+      companyName: result.companyName,
+      companySlug,
+      atsProvider: result.atsProvider,
+    });
+
+    await recordSearchBehaviorEvent(viewer, {
+        type: "COMPANY_TARGET_OPENED",
+        companyName: result.companyName,
+        companySlug,
+        sourceUrl: result.websiteUrl ?? result.careerPageUrl ?? null,
+      signals: baseSignals,
+      metadata: {
+        offerCount: result.offers.length,
+      },
+      refreshInference: false,
+    });
+
+    if (result.atsProvider || result.careerPageUrl) {
+      await recordSearchBehaviorEvent(viewer, {
+        type: "ATS_SOURCE_OPENED",
+        companyName: result.companyName,
+        companySlug,
+        sourceUrl: result.careerPageUrl ?? result.websiteUrl ?? null,
+        signals: baseSignals,
+        metadata: {
+          atsProvider: result.atsProvider ?? null,
+          discoveryMethod: result.discoveryMethod ?? null,
+        },
+      });
+    }
+  } catch (error) {
+    logServiceError({
+      level: "warn",
+      scope: "personalization/company-offers-page",
+      message: "Unable to record company page behavior event",
+      error,
+      metadata: {
+        userId: viewer.userId,
+        companyName: result.companyName,
+      },
+    });
+  }
+
   return (
     <main className="flex min-h-full flex-col gap-8">
       <section className="app-hero p-6 md:p-8">
@@ -98,11 +146,11 @@ export default async function CompanyOffersPage({ params, searchParams }: Props)
             <p className="text-sm leading-7 text-muted">{result.summary}</p>
             <div className="status-row">
               <div className="status-pill">
-                {result.atsProvider ? `ATS ${result.atsProvider}` : "Lecture HTML"}
+                {result.atsProvider ? result.atsProvider : "Lecture directe du site"}
               </div>
               {result.discoveryMethod ? (
                 <div className="status-pill status-pill-info">
-                  Detection {result.discoveryMethod}
+                  Source detectee: {result.discoveryMethod}
                 </div>
               ) : null}
               <div className="status-pill status-pill-success">
@@ -116,24 +164,54 @@ export default async function CompanyOffersPage({ params, searchParams }: Props)
               Retour a la collecte d offres
             </Link>
             {result.websiteUrl ? (
-              <a
+              <TrackedSearchLink
                 href={result.websiteUrl}
                 target="_blank"
                 rel="noreferrer"
+                interaction={{
+                  type: "COMPANY_TARGET_OPENED",
+                  companyName: result.companyName,
+                  companySlug,
+                  sourceUrl: result.websiteUrl,
+                  companyContext: {
+                    companyName: result.companyName,
+                    companySlug,
+                    atsProvider: result.atsProvider,
+                  },
+                  metadata: {
+                    ctaKind: "official_site",
+                    origin: "company_offers_page",
+                  },
+                }}
                 className="inline-flex items-center justify-center rounded-full border border-line px-4 py-2 text-sm font-medium text-foreground transition hover:-translate-y-0.5"
               >
                 Site officiel
-              </a>
+              </TrackedSearchLink>
             ) : null}
             {result.careerPageUrl ? (
-              <a
+              <TrackedSearchLink
                 href={result.careerPageUrl}
                 target="_blank"
                 rel="noreferrer"
+                interaction={{
+                  type: "ATS_SOURCE_OPENED",
+                  companyName: result.companyName,
+                  companySlug,
+                  sourceUrl: result.careerPageUrl,
+                  companyContext: {
+                    companyName: result.companyName,
+                    companySlug,
+                    atsProvider: result.atsProvider,
+                  },
+                  metadata: {
+                    ctaKind: "career_page",
+                    origin: "company_offers_page",
+                  },
+                }}
                 className="inline-flex items-center justify-center rounded-full bg-foreground px-4 py-2 text-sm font-medium text-white transition hover:-translate-y-0.5"
               >
                 Ouvrir la page carriere
-              </a>
+              </TrackedSearchLink>
             ) : null}
           </div>
         </div>
@@ -169,35 +247,55 @@ export default async function CompanyOffersPage({ params, searchParams }: Props)
                     <h2 className="text-2xl font-semibold tracking-tight text-foreground">
                       {offer.title}
                     </h2>
-                    <p className="mt-2 text-sm text-muted">
-                      Publication: {formatPublishedAt(offer.publishedAt)}
-                    </p>
+                    {formatPublishedAt(offer.publishedAt) ? (
+                      <p className="mt-2 text-sm text-muted">
+                        Publication: {formatPublishedAt(offer.publishedAt)}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
 
-                <a
+                <TrackedSearchLink
                   href={offer.sourceUrl}
                   target="_blank"
                   rel="noreferrer"
+                  interaction={{
+                    type: "SEARCH_RESULT_OPENED",
+                    sourceUrl: offer.sourceUrl,
+                    companyName: result.companyName,
+                    offerContext: {
+                      title: offer.title,
+                      companyName: result.companyName,
+                      locationLabel: offer.locationLabel,
+                      matchedQueryLabels: [result.companyName],
+                      matchedKeywords: [],
+                    },
+                    metadata: {
+                      ctaKind: "company_career_offer",
+                      origin: "company_offers_page",
+                    },
+                  }}
                   className="inline-flex items-center justify-center rounded-full bg-foreground px-5 py-3 text-sm font-medium text-white transition hover:-translate-y-0.5"
                 >
                   Ouvrir l annonce
-                </a>
+                </TrackedSearchLink>
               </div>
 
-              <div className="mt-5 rounded-[1.25rem] border border-line bg-white/70 p-4">
-                <p className="text-sm font-medium text-foreground">Description</p>
-                <p className="mt-2 text-sm leading-7 text-foreground">
-                  {offer.description ?? "Aucune description exploitable n a pu etre extraite automatiquement."}
-                </p>
-              </div>
+              {offer.description ? (
+                <div className="mt-5 rounded-[1.25rem] border border-line bg-white/70 p-4">
+                  <p className="text-sm font-medium text-foreground">Description</p>
+                  <p className="mt-2 text-sm leading-7 text-foreground">
+                    {offer.description}
+                  </p>
+                </div>
+              ) : null}
             </article>
           ))}
         </section>
       ) : (
         <section className="rounded-[1.75rem] border border-dashed border-line bg-card/70 p-8 text-sm leading-7 text-muted">
           Aucune offre n a pu etre extraite depuis cette source pour le moment. Le plus
-          frequent est un portail ATS tres dynamique ou une page carriere sans liste
+          frequent est un portail de recrutement tres dynamique ou une page carriere sans liste
           directement accessible au HTML public.
         </section>
       )}

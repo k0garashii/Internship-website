@@ -2,10 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getCurrentViewer } from "@/lib/auth/session";
+import { logServiceError } from "@/lib/observability/error-logging";
 import {
   SearchOfferListingError,
   getPersistedOfferDetailForUser,
 } from "@/lib/search/listing";
+import { buildSignalsFromOfferRecord, recordSearchBehaviorEvent } from "@/server/application/personalization/search-behavior-service";
+import { OfferEngagementTracker } from "../../_components/offer-engagement-tracker";
+import { TrackedSearchLink } from "../../_components/tracked-search-link";
 
 const lifecycleLabels: Record<string, string> = {
   DISCOVERED: "Decouverte",
@@ -61,10 +65,16 @@ const draftStatusLabels: Record<string, string> = {
 
 function formatDateTime(value: string | null) {
   if (!value) {
-    return "Inconnue";
+    return null;
   }
 
-  return new Date(value).toLocaleString("fr-FR", {
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toLocaleString("fr-FR", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -75,10 +85,16 @@ function formatDateTime(value: string | null) {
 
 function formatDate(value: string | null) {
   if (!value) {
-    return "Inconnue";
+    return null;
   }
 
-  return new Date(value).toLocaleDateString("fr-FR", {
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toLocaleDateString("fr-FR", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -104,8 +120,62 @@ export default async function OfferDetailPage({ params }: PageProps) {
     const detail = await getPersistedOfferDetailForUser(viewer.userId, offerId);
     const { offer } = detail;
 
+    try {
+      await recordSearchBehaviorEvent(viewer, {
+        type: "SEARCH_RESULT_OPENED",
+        jobOfferId: offer.id,
+        companyName: offer.companyName,
+        sourceUrl: offer.sourceUrl,
+        signals: buildSignalsFromOfferRecord({
+          title: offer.title,
+          companyName: offer.companyName,
+          locationLabel: offer.locationLabel,
+          employmentType: offer.employmentType,
+          workMode: offer.workMode,
+          rawPayload: offer.normalizedOpportunity
+            ? {
+                offer: {
+                  matchedQueryLabels: offer.matchedQueryLabels,
+                  matchedKeywords: offer.matchedKeywords,
+                },
+              }
+            : {
+                offer: {
+                  matchedQueryLabels: offer.matchedQueryLabels,
+                  matchedKeywords: offer.matchedKeywords,
+                },
+              },
+        }),
+      });
+    } catch (error) {
+      logServiceError({
+        level: "warn",
+        scope: "personalization/offer-detail",
+        message: "Unable to record offer detail open event",
+        error,
+        metadata: {
+          userId: viewer.userId,
+          offerId: offer.id,
+        },
+      });
+    }
+
     return (
       <main className="flex min-h-full flex-col gap-8">
+        <OfferEngagementTracker
+          jobOfferId={offer.id}
+          sourceUrl={offer.sourceUrl}
+          origin="offer_detail_page"
+          offerContext={{
+            title: offer.title,
+            companyName: offer.companyName,
+            locationLabel: offer.locationLabel,
+            employmentType: offer.employmentType,
+            workMode: offer.workMode,
+            matchedQueryLabels: offer.matchedQueryLabels,
+            matchedKeywords: offer.matchedKeywords,
+          }}
+        />
         <section className="rounded-[2rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] md:p-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-4">
@@ -140,7 +210,7 @@ export default async function OfferDetailPage({ params }: PageProps) {
               </div>
               <div>
                 <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-                  Fiche detail offre
+                  Fiche offre
                 </p>
                 <h1 className="mt-3 text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
                   {offer.title}
@@ -153,14 +223,32 @@ export default async function OfferDetailPage({ params }: PageProps) {
             </div>
 
             <div className="flex flex-col gap-3 lg:items-end">
-              <a
+              <TrackedSearchLink
                 href={offer.sourceUrl}
                 target="_blank"
                 rel="noreferrer"
+                interaction={{
+                  type: "SEARCH_RESULT_OPENED",
+                  jobOfferId: offer.id,
+                  sourceUrl: offer.sourceUrl,
+                  offerContext: {
+                    title: offer.title,
+                    companyName: offer.companyName,
+                    locationLabel: offer.locationLabel,
+                    employmentType: offer.employmentType,
+                    workMode: offer.workMode,
+                    matchedQueryLabels: offer.matchedQueryLabels,
+                    matchedKeywords: offer.matchedKeywords,
+                  },
+                  metadata: {
+                    ctaKind: "external_offer",
+                    origin: "offer_detail_page",
+                  },
+                }}
                 className="inline-flex items-center justify-center rounded-full bg-foreground px-5 py-3 text-sm font-medium text-white transition hover:-translate-y-0.5"
               >
                 Ouvrir l offre source
-              </a>
+              </TrackedSearchLink>
               <Link
                 href="/workspace/drafts"
                 className="inline-flex items-center justify-center rounded-full border border-line px-5 py-3 text-sm font-medium text-foreground transition hover:-translate-y-0.5"
@@ -172,36 +260,44 @@ export default async function OfferDetailPage({ params }: PageProps) {
         </section>
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <article className="rounded-[1.5rem] border border-line bg-card p-5 shadow-[0_18px_45px_rgba(31,41,55,0.05)]">
-            <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-              Contrat
-            </p>
-            <p className="mt-3 text-lg font-medium text-foreground">
-              {offer.employmentType ? contractLabels[offer.employmentType] : "Non precise"}
-            </p>
-          </article>
-          <article className="rounded-[1.5rem] border border-line bg-card p-5 shadow-[0_18px_45px_rgba(31,41,55,0.05)]">
-            <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-              Mode
-            </p>
-            <p className="mt-3 text-lg font-medium text-foreground">
-              {offer.workMode ? workModeLabels[offer.workMode] : "Non precise"}
-            </p>
-          </article>
-          <article className="rounded-[1.5rem] border border-line bg-card p-5 shadow-[0_18px_45px_rgba(31,41,55,0.05)]">
-            <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-              Publication
-            </p>
-            <p className="mt-3 text-lg font-medium text-foreground">{formatDate(offer.postedAt)}</p>
-          </article>
-          <article className="rounded-[1.5rem] border border-line bg-card p-5 shadow-[0_18px_45px_rgba(31,41,55,0.05)]">
-            <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-              Derniere vue
-            </p>
-            <p className="mt-3 text-lg font-medium text-foreground">
-              {formatDateTime(offer.lastSeenAt)}
-            </p>
-          </article>
+          {offer.employmentType ? (
+            <article className="rounded-[1.5rem] border border-line bg-card p-5 shadow-[0_18px_45px_rgba(31,41,55,0.05)]">
+              <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
+                Contrat
+              </p>
+              <p className="mt-3 text-lg font-medium text-foreground">
+                {contractLabels[offer.employmentType]}
+              </p>
+            </article>
+          ) : null}
+          {offer.workMode ? (
+            <article className="rounded-[1.5rem] border border-line bg-card p-5 shadow-[0_18px_45px_rgba(31,41,55,0.05)]">
+              <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
+                Mode
+              </p>
+              <p className="mt-3 text-lg font-medium text-foreground">
+                {workModeLabels[offer.workMode]}
+              </p>
+            </article>
+          ) : null}
+          {formatDate(offer.postedAt) ? (
+            <article className="rounded-[1.5rem] border border-line bg-card p-5 shadow-[0_18px_45px_rgba(31,41,55,0.05)]">
+              <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
+                Publication
+              </p>
+              <p className="mt-3 text-lg font-medium text-foreground">{formatDate(offer.postedAt)}</p>
+            </article>
+          ) : null}
+          {formatDateTime(offer.lastSeenAt) ? (
+            <article className="rounded-[1.5rem] border border-line bg-card p-5 shadow-[0_18px_45px_rgba(31,41,55,0.05)]">
+              <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
+                Derniere vue
+              </p>
+              <p className="mt-3 text-lg font-medium text-foreground">
+                {formatDateTime(offer.lastSeenAt)}
+              </p>
+            </article>
+          ) : null}
         </section>
 
         <section className="grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
@@ -212,72 +308,74 @@ export default async function OfferDetailPage({ params }: PageProps) {
             <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
               Resume normalise et contexte collecte
             </h2>
-            <p className="mt-4 text-sm leading-7 text-foreground">
-              {offer.description ?? "Aucune description normalisee n a ete persistée pour cette offre."}
-            </p>
+            {offer.description ? (
+              <p className="mt-4 text-sm leading-7 text-foreground">
+                {offer.description}
+              </p>
+            ) : null}
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <div className="rounded-[1.25rem] border border-line bg-white/70 p-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted">
-                  Requetes reliees
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {offer.matchedQueryLabels.length > 0 ? (
-                    offer.matchedQueryLabels.map((item) => (
+              {offer.matchedQueryLabels.length > 0 ? (
+                <div className="rounded-[1.25rem] border border-line bg-white/70 p-4">
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted">
+                    Requetes reliees
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {offer.matchedQueryLabels.map((item) => (
                       <span
                         key={item}
                         className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground"
                       >
                         {item}
                       </span>
-                    ))
-                  ) : (
-                    <span className="text-sm text-muted">Aucune etiquette de requete conservee.</span>
-                  )}
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div className="rounded-[1.25rem] border border-line bg-white/70 p-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted">
-                  Mots cles retrouves
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {offer.matchedKeywords.length > 0 ? (
-                    offer.matchedKeywords.map((item) => (
+              ) : null}
+              {offer.matchedKeywords.length > 0 ? (
+                <div className="rounded-[1.25rem] border border-line bg-white/70 p-4">
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted">
+                    Mots cles retrouves
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {offer.matchedKeywords.map((item) => (
                       <span
                         key={item}
                         className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground"
                       >
                         {item}
                       </span>
-                    ))
-                  ) : (
-                    <span className="text-sm text-muted">Aucune occurrence forte stockee.</span>
-                  )}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : null}
             </div>
 
             {offer.normalizedOpportunity ? (
               <div className="mt-6 rounded-[1.25rem] border border-line bg-white/70 p-4 text-sm leading-7 text-foreground">
-                Format commun: {offer.normalizedOpportunity.sourceLabel}
+                Version normalisee: {offer.normalizedOpportunity.sourceLabel}
                 {offer.normalizedOpportunity.signal
                   ? ` / signal ${offer.normalizedOpportunity.signal}`
                   : ""}
-                . Capturee le {formatDateTime(offer.normalizedOpportunity.capturedAt)}.
+                {formatDateTime(offer.normalizedOpportunity.capturedAt)
+                  ? `. Capturee le ${formatDateTime(offer.normalizedOpportunity.capturedAt)}.`
+                  : "."}
               </div>
             ) : null}
           </article>
 
           <article className="rounded-[1.75rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] md:p-8">
             <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-              Matching
+              Correspondance profil
             </p>
             <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
               Pourquoi cette offre remonte
             </h2>
-            <p className="mt-4 text-sm leading-7 text-foreground">
-              {offer.latestMatchExplanation ?? "Aucune justification de matching n a ete persistée."}
-            </p>
+            {offer.latestMatchExplanation ? (
+              <p className="mt-4 text-sm leading-7 text-foreground">
+                {offer.latestMatchExplanation}
+              </p>
+            ) : null}
 
             {offer.matchingBreakdown.length > 0 ? (
               <div className="mt-6 space-y-3">
@@ -308,7 +406,7 @@ export default async function OfferDetailPage({ params }: PageProps) {
         <section className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
           <article className="rounded-[1.75rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] md:p-8">
             <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-              Historique des runs
+              Historique des recherches
             </p>
             <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
               Trace des recherches ayant fait remonter cette offre
@@ -325,18 +423,23 @@ export default async function OfferDetailPage({ params }: PageProps) {
                       <span className="rounded-full border border-line bg-slate-50 px-3 py-1 text-xs font-medium text-foreground">
                         {runStatusLabels[entry.searchRunStatus] ?? entry.searchRunStatus}
                       </span>
-                      <span className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900">
-                        Match {entry.rawScore ?? "n/a"}
-                        {entry.rawScore !== null ? "/100" : ""}
-                      </span>
-                      <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground">
-                        Rang {entry.rank ?? "n/a"}
-                      </span>
+                      {entry.rawScore !== null ? (
+                        <span className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900">
+                          Match {entry.rawScore}/100
+                        </span>
+                      ) : null}
+                      {entry.rank !== null ? (
+                        <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground">
+                          Rang {entry.rank}
+                        </span>
+                      ) : null}
                     </div>
                     <p className="mt-3 text-sm font-medium text-foreground">{entry.searchRunLabel}</p>
-                    <p className="mt-1 text-sm leading-7 text-muted">
-                      Decouverte le {formatDateTime(entry.discoveredAt)}
-                    </p>
+                    {formatDateTime(entry.discoveredAt) ? (
+                      <p className="mt-1 text-sm leading-7 text-muted">
+                        Decouverte le {formatDateTime(entry.discoveredAt)}
+                      </p>
+                    ) : null}
                     {entry.matchExplanation ? (
                       <p className="mt-2 text-sm leading-7 text-foreground">
                         {entry.matchExplanation}
@@ -346,7 +449,7 @@ export default async function OfferDetailPage({ params }: PageProps) {
                 ))
               ) : (
                 <p className="text-sm leading-7 text-muted">
-                  Aucun historique de run detaille n est disponible.
+                  Aucun historique detaille de recherche n est disponible.
                 </p>
               )}
             </div>
@@ -369,12 +472,16 @@ export default async function OfferDetailPage({ params }: PageProps) {
                           {feedbackLabels[entry.decision] ?? entry.decision}
                         </span>
                       </div>
-                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted">
-                        Mis a jour le {formatDateTime(entry.updatedAt)}
-                      </p>
-                      <p className="mt-2 text-sm leading-7 text-foreground">
-                        {entry.note ?? "Aucune note complementaire."}
-                      </p>
+                      {formatDateTime(entry.updatedAt) ? (
+                        <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted">
+                          Mis a jour le {formatDateTime(entry.updatedAt)}
+                        </p>
+                      ) : null}
+                      {entry.note ? (
+                        <p className="mt-2 text-sm leading-7 text-foreground">
+                          {entry.note}
+                        </p>
+                      ) : null}
                     </div>
                   ))
                 ) : (
@@ -406,15 +513,21 @@ export default async function OfferDetailPage({ params }: PageProps) {
                           </span>
                         ) : null}
                       </div>
-                      <p className="mt-3 text-sm font-medium text-foreground">
-                        {entry.subject ?? "Sujet non genere"}
-                      </p>
-                      <p className="mt-2 text-sm leading-7 text-foreground">
-                        {entry.personalizationSummary ?? "Aucun resume de personnalisation."}
-                      </p>
-                      <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted">
-                        Mis a jour le {formatDateTime(entry.updatedAt)}
-                      </p>
+                      {entry.subject ? (
+                        <p className="mt-3 text-sm font-medium text-foreground">
+                          {entry.subject}
+                        </p>
+                      ) : null}
+                      {entry.personalizationSummary ? (
+                        <p className="mt-2 text-sm leading-7 text-foreground">
+                          {entry.personalizationSummary}
+                        </p>
+                      ) : null}
+                      {formatDateTime(entry.updatedAt) ? (
+                        <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted">
+                          Mis a jour le {formatDateTime(entry.updatedAt)}
+                        </p>
+                      ) : null}
                     </div>
                   ))
                 ) : (
@@ -427,12 +540,12 @@ export default async function OfferDetailPage({ params }: PageProps) {
 
             <article className="rounded-[1.75rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] md:p-8">
               <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-                Deduplication
+                Sources reliees
               </p>
               <p className="mt-4 text-sm leading-7 text-foreground">
                 {offer.deduplication.sourceUrls.length} URL source,{" "}
                 {offer.deduplication.sourceOfferIds.length} identifiant(s) externes et{" "}
-                {offer.deduplication.providers.length} provider(s) rattaches a cette offre.
+                {offer.deduplication.providers.length} source(s) rattachee(s) a cette offre.
               </p>
             </article>
           </div>

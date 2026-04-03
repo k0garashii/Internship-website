@@ -2,6 +2,8 @@ import { FeedbackDecision } from "@prisma/client";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
+import { buildSignalsFromOfferRecord, recordSearchBehaviorEvent } from "@/server/application/personalization/search-behavior-service";
+import { getRequiredActiveWorkspaceIdForUser } from "@/server/application/workspace/workspace-service";
 
 const offerFeedbackSchema = z.object({
   decision: z.enum(["NOT_RELEVANT", "MAYBE", "FAVORITE"]),
@@ -25,6 +27,7 @@ export async function saveOfferFeedback(
   jobOfferId: string,
   input: unknown,
 ) {
+  const workspaceId = await getRequiredActiveWorkspaceIdForUser(userId);
   const parsed = offerFeedbackSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -38,6 +41,13 @@ export async function saveOfferFeedback(
     },
     select: {
       id: true,
+      title: true,
+      companyName: true,
+      locationLabel: true,
+      employmentType: true,
+      workMode: true,
+      sourceUrl: true,
+      rawPayload: true,
     },
   });
 
@@ -77,6 +87,7 @@ export async function saveOfferFeedback(
     : await db.offerFeedback.create({
         data: {
           userId,
+          workspaceId,
           jobOfferId,
           decision: parsed.data.decision as FeedbackDecision,
           note: parsed.data.note?.trim() || null,
@@ -88,6 +99,32 @@ export async function saveOfferFeedback(
           updatedAt: true,
         },
       });
+
+  await recordSearchBehaviorEvent(
+    {
+      userId,
+      workspaceId,
+    },
+    {
+      type:
+        parsed.data.decision === "FAVORITE"
+          ? "OFFER_FEEDBACK_FAVORITE"
+          : parsed.data.decision === "MAYBE"
+            ? "OFFER_FEEDBACK_MAYBE"
+            : "OFFER_FEEDBACK_NOT_RELEVANT",
+      jobOfferId: offer.id,
+      companyName: offer.companyName,
+      sourceUrl: offer.sourceUrl,
+      signals: buildSignalsFromOfferRecord(offer).map((signal) => ({
+        ...signal,
+        polarity: parsed.data.decision === "NOT_RELEVANT" ? "NEGATIVE" : "POSITIVE",
+      })),
+      metadata: {
+        note: parsed.data.note?.trim() || null,
+        feedbackId: feedback.id,
+      },
+    },
+  );
 
   return {
     id: feedback.id,

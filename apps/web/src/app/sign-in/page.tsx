@@ -31,7 +31,8 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         </h1>
         <p className="app-copy max-w-2xl">
           Connecte-toi avec ton email et ton mot de passe pour retrouver tes recherches,
-          tes brouillons et l etat courant de ton profil.
+          tes brouillons et l etat courant de ton profil. La connexion Gmail se propose
+          ensuite directement sur le tableau de bord.
         </p>
       </div>
 

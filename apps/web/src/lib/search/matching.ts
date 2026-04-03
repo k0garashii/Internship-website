@@ -1,4 +1,5 @@
 import type { PersonalProfileFile } from "@/lib/config/personal-profile";
+import type { InferredSearchPreference } from "@/lib/profile/personalization-model";
 import type { SearchTargetsFile } from "@/lib/config/search-targets";
 import type {
   OfferProfileMatch,
@@ -9,6 +10,7 @@ import type {
 type MatchConfig = {
   personalProfile: PersonalProfileFile;
   searchTargets: SearchTargetsFile;
+  inferredPreferences?: InferredSearchPreference[];
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -356,6 +358,63 @@ function scoreExperienceAlignment(config: MatchConfig, offer: SearchDiscoveryOff
   } satisfies OfferProfileMatchBreakdownItem;
 }
 
+function scoreInferredPreferenceBoost(config: MatchConfig, offer: SearchDiscoveryOffer) {
+  const inferredPreferences = (config.inferredPreferences ?? []).filter(
+    (preference) => preference.polarity === "POSITIVE",
+  );
+
+  if (inferredPreferences.length === 0) {
+    return null;
+  }
+
+  const offerTokenSet = new Set(
+    unique([
+      ...tokenize(offer.title),
+      ...tokenize(offer.summary),
+      ...tokenize(offer.profileSnippet),
+      ...tokenize(offer.companyName),
+      ...tokenize(offer.locationLabel),
+    ]),
+  );
+  const matchedTerms: string[] = [];
+  let awarded = 0;
+
+  for (const preference of inferredPreferences) {
+    const preferenceTokens = tokenize(preference.value);
+    const overlaps = overlap(preferenceTokens, offerTokenSet);
+
+    if (overlaps.length === 0) {
+      continue;
+    }
+
+    matchedTerms.push(preference.value);
+
+    const confidenceMultiplier =
+      preference.confidence === "HIGH" ? 1.25 : preference.confidence === "MEDIUM" ? 1 : 0.75;
+    const baseAward =
+      preference.axis === "ROLE" || preference.axis === "COMPANY"
+        ? 5
+        : preference.axis === "DOMAIN" || preference.axis === "TECHNOLOGY"
+          ? 4
+          : 3;
+
+    awarded += Math.round(baseAward * confidenceMultiplier);
+  }
+
+  if (awarded <= 0) {
+    return null;
+  }
+
+  return {
+    criterion: "Signaux implicites",
+    awarded: clamp(awarded, 3, 18),
+    max: 18,
+    reason:
+      "Des interactions passees de l utilisateur renforcent la pertinence de cette offre sans remplacer les preferences declarees.",
+    matchedTerms: unique(matchedTerms).slice(0, 6),
+  } satisfies OfferProfileMatchBreakdownItem;
+}
+
 export function matchProfileToOffer(
   config: MatchConfig,
   offer: SearchDiscoveryOffer,
@@ -371,6 +430,7 @@ export function matchProfileToOffer(
   addBreakdown(breakdown, scoreContractAlignment(offer, config));
   addBreakdown(breakdown, scoreWorkModeAlignment(config, offer));
   addBreakdown(breakdown, scoreExperienceAlignment(config, offer));
+  addBreakdown(breakdown, scoreInferredPreferenceBoost(config, offer));
 
   const score = clamp(
     breakdown.reduce((total, item) => total + item.awarded, 0),

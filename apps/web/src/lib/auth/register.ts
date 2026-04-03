@@ -1,13 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
-import { db } from "@/lib/db";
+import { registerEmailPasswordUser } from "@/server/facades/auth-facade";
 
 import { hashPassword } from "./password";
-import {
-  prepareAuthSession,
-  type SessionContext,
-} from "./session";
+import { type SessionContext } from "./session";
 
 const registerUserSchema = z.object({
   fullName: z.string().trim().min(2).max(120),
@@ -49,33 +46,11 @@ export async function registerUser(
   const passwordHash = await hashPassword(password);
 
   try {
-    const result = await db.$transaction(async (tx) => {
-      const createdUser = await tx.user.create({
-        data: {
-          email,
-          fullName,
-          passwordHash,
-          profile: {
-            create: {},
-          },
-        },
-        select: {
-          id: true,
-          email: true,
-          fullName: true,
-        },
-      });
-
-      const session = prepareAuthSession(createdUser.id, sessionContext);
-
-      await tx.authSession.create({
-        data: session.record,
-      });
-
-      return {
-        user: createdUser,
-        session,
-      };
+    const result = await registerEmailPasswordUser({
+      email,
+      fullName,
+      passwordHash,
+      sessionContext,
     });
 
     return {

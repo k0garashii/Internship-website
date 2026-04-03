@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 
 import type {
@@ -65,43 +64,9 @@ function getReplyStatusLabel(status: GmailConnectionSnapshot["detectedReplies"][
 
 export function GmailMailboxPanel({ initialSnapshot }: Props) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
-  const [syncQuery, setSyncQuery] = useState(initialSnapshot.source?.syncQuery ?? "");
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  async function handleSaveSettings() {
-    setError(null);
-    setMessage(null);
-    setIsSaving(true);
-
-    const response = await fetch("/api/email/google/settings", {
-      method: "PATCH",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        syncQuery,
-      }),
-    });
-
-    const payload = (await response.json()) as GmailConnectionSnapshot & {
-      error?: string;
-    };
-
-    if (!response.ok) {
-      setError(payload.error ?? "Impossible de mettre a jour la requete Gmail");
-      setIsSaving(false);
-      return;
-    }
-
-    setSnapshot(payload);
-    setSyncQuery(payload.source?.syncQuery ?? "");
-    setMessage("Filtre Gmail mis a jour.");
-    setIsSaving(false);
-  }
 
   async function handleSync() {
     setError(null);
@@ -123,36 +88,10 @@ export function GmailMailboxPanel({ initialSnapshot }: Props) {
     }
 
     setSnapshot(payload.snapshot);
-    setSyncQuery(payload.snapshot.source?.syncQuery ?? "");
     setMessage(
       `${payload.processedMessageCount} message(s) lus, ${payload.filteredOutMessageCount} ecarte(s), ${payload.detectedReplyCount} signal(aux) de reponse recalcules.`,
     );
     setIsSyncing(false);
-  }
-
-  async function handleDisconnect() {
-    setError(null);
-    setMessage(null);
-    setIsDisconnecting(true);
-
-    const response = await fetch("/api/email/google/disconnect", {
-      method: "POST",
-    });
-
-    const payload = (await response.json()) as GmailConnectionSnapshot & {
-      error?: string;
-    };
-
-    if (!response.ok) {
-      setError(payload.error ?? "Impossible de deconnecter Gmail");
-      setIsDisconnecting(false);
-      return;
-    }
-
-    setSnapshot(payload);
-    setSyncQuery(payload.source?.syncQuery ?? "");
-    setMessage("Connexion Gmail retiree.");
-    setIsDisconnecting(false);
   }
 
   const source = snapshot.source;
@@ -171,7 +110,7 @@ export function GmailMailboxPanel({ initialSnapshot }: Props) {
             envoye depuis l application.
           </p>
         </div>
-        
+
         {message ? (
           <div className="rounded-[1rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
             {message}
@@ -185,27 +124,13 @@ export function GmailMailboxPanel({ initialSnapshot }: Props) {
         ) : null}
 
         <div className="flex flex-wrap gap-3">
-          <a
-            href="/api/email/google/connect?scopeSet=mailbox&redirectTo=%2Fworkspace%2Femail"
-            className="inline-flex items-center justify-center rounded-full bg-foreground px-5 py-3 text-sm font-medium text-white transition hover:-translate-y-0.5"
-          >
-            {source ? "Reconnecter Gmail" : "Connecter Gmail"}
-          </a>
-          <a
-            href="/api/email/google/connect?scopeSet=mailbox_send&redirectTo=%2Fworkspace%2Femail"
-            className="inline-flex items-center justify-center rounded-full border border-line px-5 py-3 text-sm font-medium text-foreground transition hover:-translate-y-0.5"
-          >
-            Activer brouillons et envoi
-          </a>
-          {source ? (
-            <button
-              type="button"
-              onClick={handleDisconnect}
-              disabled={isDisconnecting}
-              className="inline-flex items-center justify-center rounded-full border border-red-200 bg-red-50 px-5 py-3 text-sm font-medium text-red-800 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+          {!source ? (
+            <a
+              href="/api/email/google/connect?scopeSet=mailbox&redirectTo=%2Fworkspace"
+              className="inline-flex items-center justify-center rounded-full bg-foreground px-5 py-3 text-sm font-medium text-white transition hover:-translate-y-0.5"
             >
-              {isDisconnecting ? "Deconnexion..." : "Deconnecter Gmail"}
-            </button>
+              Connecter Gmail
+            </a>
           ) : null}
           {source ? (
             <button
@@ -218,6 +143,14 @@ export function GmailMailboxPanel({ initialSnapshot }: Props) {
             </button>
           ) : null}
         </div>
+
+        {source ? (
+          <div className="rounded-[1rem] border border-line bg-white/70 px-4 py-4 text-sm leading-7 text-foreground">
+            {source.hasSendScope
+              ? "Les autorisations Gmail sont completes. Cette page garde maintenant la synchro et la lecture des fils utiles."
+              : "L activation brouillons et envoi se fait maintenant sur la page precedente, juste apres la connexion Gmail."}
+          </div>
+        ) : null}
       </aside>
 
       <div className="space-y-4">

@@ -3,7 +3,7 @@ import Link from "next/link";
 const strengths = [
   "Profil utilisateur structure et sauvegarde en base",
   "Ciblage d entreprises compatibles avec le profil",
-  "Detection de pages carrieres et d ATS publics",
+  "Detection de pages carrieres et de portails de recrutement publics",
   "Collecte web initiale d offres avec score exploratoire",
 ];
 

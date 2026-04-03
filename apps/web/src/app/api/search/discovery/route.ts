@@ -1,16 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentViewer } from "@/lib/auth/session";
-import { UserConfigError, exportUserConfig } from "@/lib/config/user-config";
+import { UserConfigError } from "@/lib/config/user-config";
 import { logRouteError, logRouteEvent } from "@/lib/observability/error-logging";
 import {
-  SearchDiscoveryError,
-  discoverInitialOffers,
-} from "@/lib/search/discovery";
-import {
   SearchPersistenceError,
-  persistSearchDiscoveryResult,
 } from "@/lib/search/persistence";
+import { SearchDiscoveryError } from "@/lib/search/discovery";
+import { buildSignalsFromQueryExecutions, recordSearchBehaviorEvent } from "@/server/application/personalization/search-behavior-service";
+import { runSearchDiscovery } from "@/server/facades/search-facade";
 
 export const runtime = "nodejs";
 
@@ -39,9 +37,18 @@ async function handleSearchDiscovery(request: Request) {
       },
     });
 
-    const config = await exportUserConfig(viewer);
-    const result = await discoverInitialOffers(config);
-    const persistence = await persistSearchDiscoveryResult(viewer.userId, result);
+    const result = await runSearchDiscovery(viewer);
+
+    await recordSearchBehaviorEvent(viewer, {
+      type: "SEARCH_EXECUTED",
+      searchRunId: result.persistence.searchRunId,
+      queryText: result.queryExecutions.map((execution) => execution.queryText).join(" | "),
+      signals: buildSignalsFromQueryExecutions(result.queryExecutions),
+      metadata: {
+        offerCount: result.offerCount,
+        executedQueryCount: result.executedQueryCount,
+      },
+    });
 
     logRouteEvent({
       route: "/api/search/discovery",
@@ -53,20 +60,14 @@ async function handleSearchDiscovery(request: Request) {
         offerCount: result.offerCount,
         normalizedOfferCount: result.normalizedOffers.length,
         executedQueryCount: result.executedQueryCount,
-        persistedOfferCount: persistence.persistedOfferCount,
-        searchRunId: persistence.searchRunId,
+        persistedOfferCount: result.persistence.persistedOfferCount,
+        searchRunId: result.persistence.searchRunId,
       },
     });
 
-    return NextResponse.json(
-      {
-        ...result,
-        persistence,
-      },
-      {
-        status: 200,
-      },
-    );
+    return NextResponse.json(result, {
+      status: 200,
+    });
   } catch (error) {
     if (
       error instanceof UserConfigError ||

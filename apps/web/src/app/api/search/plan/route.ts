@@ -4,6 +4,7 @@ import { getCurrentViewer } from "@/lib/auth/session";
 import { UserConfigError, exportUserConfig } from "@/lib/config/user-config";
 import { logRouteError } from "@/lib/observability/error-logging";
 import { buildSearchQueryPlan } from "@/lib/search/query-plan";
+import { buildSignalsFromSearchPlan, recordSearchBehaviorEvent } from "@/server/application/personalization/search-behavior-service";
 
 export const runtime = "nodejs";
 
@@ -24,6 +25,15 @@ export async function GET() {
   try {
     const config = await exportUserConfig(viewer);
     const plan = buildSearchQueryPlan(config.personalProfile, config.searchTargets);
+
+    await recordSearchBehaviorEvent(viewer, {
+      type: "SEARCH_PLAN_VIEWED",
+      queryText: plan.queries.map((query) => query.queryText).join(" | "),
+      signals: buildSignalsFromSearchPlan(plan),
+      metadata: {
+        queryCount: plan.queries.length,
+      },
+    });
 
     return NextResponse.json(plan, {
       status: 200,
