@@ -20,7 +20,9 @@
         "db:validate": "prisma validate",
         "db:generate": "prisma generate",
         "typecheck": "tsc --noEmit",
-        "test:e2e": "npm run clean:next && npm run build && tsx --test \"tests/e2e/**/*.test.ts\""
+        "test:e2e": "npm run clean:next && npm run build && tsx --test \"tests/e2e/**/*.test.ts\"",
+        "db:migrate:dev": "prisma migrate dev",
+        "db:migrate:deploy": "prisma migrate deploy"
     },
     "dependencies": {
         "@prisma/client": "^6.19.2",
