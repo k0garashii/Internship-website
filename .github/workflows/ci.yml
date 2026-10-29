@@ -6,6 +6,13 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   web-checks:
     runs-on: ubuntu-latest
@@ -13,6 +20,11 @@ jobs:
     defaults:
       run:
         working-directory: apps/web
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/postgres?schema=public
+      NEXT_TELEMETRY_DISABLED: "1"
 
     steps:
       - name: Checkout
@@ -30,18 +42,18 @@ jobs:
 
       - name: Validate Prisma schema
         run: npm run db:validate
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres?schema=public
-          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/postgres?schema=public
 
       - name: Lint
         run: npm run lint
 
-      - name: Test
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
         run: npm run test
 
       - name: Build
         run: npm run build
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres?schema=public
-          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/postgres?schema=public
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=critical
