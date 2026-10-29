@@ -16,6 +16,7 @@ import {
   hasGoogleScopes,
   parseGoogleScope,
   refreshGoogleTokens,
+  revokeGoogleToken,
   type GoogleTokenPayload,
   type GoogleUserInfo,
 } from "@/lib/email/google";
@@ -25,7 +26,8 @@ import {
   type MailboxMessageSnapshot,
   type OfferMailboxSignalSnapshot,
 } from "@/lib/email/mailbox-sync";
-import { logServiceEvent } from "@/lib/observability/error-logging";
+import { logServiceError, logServiceEvent } from "@/lib/observability/error-logging";
+import { decryptSecret, encryptSecret } from "@/lib/security/secrets";
 import { getRequiredActiveWorkspaceIdForUser } from "@/server/application/workspace/workspace-service";
 
 const DEFAULT_GMAIL_SYNC_QUERY = "in:anywhere newer_than:120d -category:promotions -category:social";
@@ -232,7 +234,10 @@ export async function upsertGmailConnectionFromGoogleOauth(options: {
       },
     });
 
-    const refreshToken = options.tokens.refresh_token ?? existingAccount?.refreshToken ?? null;
+    const refreshToken = options.tokens.refresh_token
+      ? encryptSecret(options.tokens.refresh_token)
+      : (existingAccount?.refreshToken ?? null);
+    const accessToken = encryptSecret(options.tokens.access_token);
     const mergedScope = mergeScopes(existingAccount?.scope, incomingScopes);
 
     let authAccountId: string;
@@ -244,12 +249,12 @@ export async function upsertGmailConnectionFromGoogleOauth(options: {
         },
         data: {
           userId: options.userId,
-          accessToken: options.tokens.access_token,
+          accessToken,
           refreshToken,
           expiresAt,
           tokenType: options.tokens.token_type ?? conflictingAccount.tokenType,
           scope: mergedScope,
-          idToken: options.tokens.id_token ?? conflictingAccount.idToken,
+          idToken: encryptSecret(options.tokens.id_token) ?? conflictingAccount.idToken,
         },
       });
       authAccountId = updated.id;
@@ -260,12 +265,12 @@ export async function upsertGmailConnectionFromGoogleOauth(options: {
         },
         data: {
           providerAccountId: options.userInfo.sub,
-          accessToken: options.tokens.access_token,
+          accessToken,
           refreshToken,
           expiresAt,
           tokenType: options.tokens.token_type ?? existingAccount.tokenType,
           scope: mergedScope,
-          idToken: options.tokens.id_token ?? existingAccount.idToken,
+          idToken: encryptSecret(options.tokens.id_token) ?? existingAccount.idToken,
         },
       });
       authAccountId = updated.id;
@@ -276,12 +281,12 @@ export async function upsertGmailConnectionFromGoogleOauth(options: {
           provider: GOOGLE_PROVIDER,
           providerAccountId: options.userInfo.sub,
           accountType: "oauth",
-          accessToken: options.tokens.access_token,
+          accessToken,
           refreshToken,
           expiresAt,
           tokenType: options.tokens.token_type ?? "Bearer",
           scope: mergedScope,
-          idToken: options.tokens.id_token,
+          idToken: encryptSecret(options.tokens.id_token),
         },
       });
       authAccountId = created.id;
@@ -534,34 +539,35 @@ export async function ensureGmailConnectionAccess(options: {
 
   const now = Date.now();
   const expiresAt = connection.authAccount.expiresAt?.getTime() ?? 0;
+  const storedAccessToken = decryptSecret(connection.authAccount.accessToken);
+  const storedRefreshToken = decryptSecret(connection.authAccount.refreshToken);
   const shouldRefresh =
-    !connection.authAccount.accessToken ||
-    Boolean(connection.authAccount.refreshToken && expiresAt <= now + 60_000);
+    !storedAccessToken || Boolean(storedRefreshToken && expiresAt <= now + 60_000);
 
   if (!shouldRefresh) {
     return {
       connection,
       authAccount: connection.authAccount,
-      accessToken: connection.authAccount.accessToken as string,
+      accessToken: storedAccessToken,
     };
   }
 
-  if (!connection.authAccount.refreshToken) {
+  if (!storedRefreshToken) {
     throw new GmailMailboxError("La connexion Gmail doit etre reautorisée", 412);
   }
 
-  const refreshed = await refreshGoogleTokens(connection.authAccount.refreshToken);
+  const refreshed = await refreshGoogleTokens(storedRefreshToken);
   const updatedAccount = await db.authAccount.update({
     where: {
       id: connection.authAccount.id,
     },
     data: {
-      accessToken: refreshed.access_token,
+      accessToken: encryptSecret(refreshed.access_token),
       expiresAt: buildExpiryDate(refreshed),
       tokenType: refreshed.token_type ?? connection.authAccount.tokenType,
       scope: mergeScopes(connection.authAccount.scope, refreshed.scope),
-      idToken: refreshed.id_token ?? connection.authAccount.idToken,
-      refreshToken: refreshed.refresh_token ?? connection.authAccount.refreshToken,
+      idToken: encryptSecret(refreshed.id_token) ?? connection.authAccount.idToken,
+      refreshToken: encryptSecret(refreshed.refresh_token ?? storedRefreshToken),
     },
   });
 
@@ -571,7 +577,7 @@ export async function ensureGmailConnectionAccess(options: {
       authAccount: updatedAccount,
     },
     authAccount: updatedAccount,
-    accessToken: updatedAccount.accessToken as string,
+    accessToken: refreshed.access_token,
   };
 }
 
@@ -620,6 +626,25 @@ export async function disconnectGmailConnection(userId: string) {
 
   if (!connection) {
     return getGmailConnectionSnapshot(userId);
+  }
+
+  const tokenToRevoke =
+    connection.authAccount?.refreshToken ?? connection.authAccount?.accessToken;
+
+  if (tokenToRevoke) {
+    try {
+      await revokeGoogleToken(decryptSecret(tokenToRevoke));
+    } catch (error) {
+      logServiceError({
+        level: "warn",
+        scope: "email/gmail-connection",
+        message: "Google token revocation failed during Gmail disconnect",
+        error,
+        metadata: {
+          userId,
+        },
+      });
+    }
   }
 
   await db.$transaction(async (tx) => {

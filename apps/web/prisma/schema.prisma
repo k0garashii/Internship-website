@@ -509,6 +509,15 @@ model AuthSession {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])
+  @@index([expiresAt])
+}
+
+model RateLimitBucket {
+  key     String   @id
+  count   Int
+  resetAt DateTime
+
+  @@index([resetAt])
 }
 
 model VerificationToken {

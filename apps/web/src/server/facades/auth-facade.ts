@@ -57,7 +57,6 @@ export async function issueViewerSession(input: {
   return db.$transaction(async (tx) => {
     await tx.authSession.deleteMany({
       where: {
-        userId: input.userId,
         expiresAt: {
           lte: new Date(),
         },

@@ -1,9 +1,13 @@
 import { createHash, randomBytes } from "node:crypto";
 
+import { UserStatus } from "@prisma/client";
 import { cookies } from "next/headers";
 
 import { db } from "@/lib/db";
-import { ensureUserWorkspace } from "@/server/application/workspace/workspace-service";
+import {
+  ensureUserWorkspace,
+  findActiveWorkspaceContext,
+} from "@/server/application/workspace/workspace-service";
 
 import { SESSION_COOKIE_NAME } from "./constants";
 import type { AuthenticatedViewer } from "./viewer";
@@ -106,31 +110,13 @@ export async function revokeSessionByToken(token: string | null | undefined) {
 async function resolveCurrentViewer(
   sessionToken: string,
 ): Promise<AuthenticatedViewer | null> {
-  const now = new Date();
-
-  await db.authSession.deleteMany({
-    where: {
-      OR: [
-        {
-          sessionToken: hashSessionToken(sessionToken),
-          expiresAt: {
-            lte: now,
-          },
-        },
-        {
-          expiresAt: {
-            lte: now,
-          },
-        },
-      ],
-    },
-  });
-
+  // Expired sessions are filtered here and purged at sign-in, so the hot path
+  // stays read-only.
   const session = await db.authSession.findFirst({
     where: {
       sessionToken: hashSessionToken(sessionToken),
       expiresAt: {
-        gt: now,
+        gt: new Date(),
       },
     },
     select: {
@@ -141,16 +127,19 @@ async function resolveCurrentViewer(
           email: true,
           fullName: true,
           activeWorkspaceId: true,
+          status: true,
         },
       },
     },
   });
 
-  if (!session) {
+  if (!session || session.user.status !== UserStatus.ACTIVE) {
     return null;
   }
 
-  const workspace = await ensureUserWorkspace(session.userId);
+  const workspace =
+    (await findActiveWorkspaceContext(session.userId, session.user.activeWorkspaceId)) ??
+    (await ensureUserWorkspace(session.userId));
 
   return {
     userId: session.userId,

@@ -16,6 +16,7 @@ import {
   parseInboundEmailOpportunity,
 } from "@/lib/email/opportunities";
 import { requireViewerWorkspaceId } from "@/lib/security/ownership";
+import { safeEqualStrings } from "@/lib/security/secrets";
 import { getRequiredActiveWorkspaceIdForUser } from "@/server/application/workspace/workspace-service";
 
 const FORWARDING_LABEL = "Forwarding dedie";
@@ -596,15 +597,12 @@ export async function ingestForwardedEmail(input: unknown, providedSecret: strin
     },
   });
 
-  if (!connection?.webhookSecretHash) {
-    return {
-      ok: false as const,
-      status: 404,
-      error: "Forwarding source not found",
-    };
-  }
-
-  if (hashForwardingSecret(providedSecret) !== connection.webhookSecretHash) {
+  // Same response for unknown recipients and wrong secrets so the endpoint
+  // cannot be used to discover which forwarding addresses exist.
+  if (
+    !connection?.webhookSecretHash ||
+    !safeEqualStrings(hashForwardingSecret(providedSecret), connection.webhookSecretHash)
+  ) {
     return {
       ok: false as const,
       status: 403,

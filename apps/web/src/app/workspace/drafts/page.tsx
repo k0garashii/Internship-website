@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { getCurrentViewer } from "@/lib/auth/session";
 import { listEmailDraftsForUser } from "@/lib/email/drafts";
 import { getGmailConnectionSnapshot } from "@/lib/email/gmail-connection";
@@ -7,7 +8,7 @@ export default async function DraftsPage() {
   const viewer = await getCurrentViewer();
 
   if (!viewer) {
-    return null;
+    redirect("/sign-in");
   }
 
   const [drafts, gmailSnapshot] = await Promise.all([

@@ -5,11 +5,9 @@ import { logRouteError } from "@/lib/observability/error-logging";
 
 export const runtime = "nodejs";
 
+// Header only: secrets in query strings end up in proxy and platform access logs.
 function getForwardingSecret(request: Request) {
-  return (
-    request.headers.get("x-forwarding-secret") ??
-    new URL(request.url).searchParams.get("secret")
-  );
+  return request.headers.get("x-forwarding-secret");
 }
 
 export async function POST(request: Request) {

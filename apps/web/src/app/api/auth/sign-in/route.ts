@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
+import { resolveSafeRedirectPath } from "@/lib/http/safe-redirect";
 import { logRouteError, logRouteEvent } from "@/lib/observability/error-logging";
+import {
+  buildRateLimitResponseInit,
+  RateLimitExceededError,
+} from "@/lib/security/rate-limit";
 import { SignInUserError, signInUser } from "@/lib/auth/sign-in";
 import {
   buildSessionCookieOptions,
@@ -41,7 +46,7 @@ export async function POST(request: Request) {
     const result = await signInUser(payload, extractSessionContext(request));
     const response = NextResponse.json(
       {
-        redirectTo: redirectTo?.startsWith("/") ? redirectTo : "/workspace",
+        redirectTo: resolveSafeRedirectPath(redirectTo, "/workspace"),
         user: result.user,
       },
       {
@@ -68,6 +73,24 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
+    if (error instanceof RateLimitExceededError) {
+      logRouteError({
+        level: "warn",
+        route: "/api/auth/sign-in",
+        request,
+        message: "Sign-in rate limit exceeded",
+        error,
+        status: 429,
+      });
+
+      return NextResponse.json(
+        {
+          error: "Trop de tentatives. Reessayez plus tard.",
+        },
+        buildRateLimitResponseInit(error),
+      );
+    }
+
     if (error instanceof SignInUserError) {
       logRouteError({
         level: error.status >= 500 ? "error" : "warn",

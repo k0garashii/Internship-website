@@ -4,6 +4,10 @@ import { RegisterUserError, registerUser } from "@/lib/auth/register";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
 import { logRouteError, logRouteEvent } from "@/lib/observability/error-logging";
 import {
+  buildRateLimitResponseInit,
+  RateLimitExceededError,
+} from "@/lib/security/rate-limit";
+import {
   buildSessionCookieOptions,
   extractSessionContext,
 } from "@/lib/auth/session";
@@ -66,6 +70,24 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
+    if (error instanceof RateLimitExceededError) {
+      logRouteError({
+        level: "warn",
+        route: "/api/auth/register",
+        request,
+        message: "Registration rate limit exceeded",
+        error,
+        status: 429,
+      });
+
+      return NextResponse.json(
+        {
+          error: "Trop de tentatives. Reessayez plus tard.",
+        },
+        buildRateLimitResponseInit(error),
+      );
+    }
+
     if (error instanceof RegisterUserError) {
       logRouteError({
         level: error.status >= 500 ? "error" : "warn",

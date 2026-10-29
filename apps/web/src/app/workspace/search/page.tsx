@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { getCurrentViewer } from "@/lib/auth/session";
 import { UserConfigError, exportUserConfig } from "@/lib/config/user-config";
 import { logServiceError } from "@/lib/observability/error-logging";
@@ -141,7 +142,7 @@ export default async function SearchPage() {
   const viewer = await getCurrentViewer();
 
   if (!viewer) {
-    return null;
+    redirect("/sign-in");
   }
 
   let plan: SearchQueryPlan | null = null;

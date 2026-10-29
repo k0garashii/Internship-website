@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
+import { buildRateLimitKey, enforceRateLimits } from "@/lib/security/rate-limit";
 import { registerEmailPasswordUser } from "@/server/facades/auth-facade";
 
 import { hashPassword } from "./password";
@@ -16,6 +17,9 @@ const registerUserSchema = z.object({
     .regex(/[A-Za-z]/, "Password must include a letter")
     .regex(/\d/, "Password must include a number"),
 });
+
+const REGISTRATIONS_PER_IP = 10;
+const REGISTRATION_WINDOW_MS = 60 * 60 * 1000;
 
 export class RegisterUserError extends Error {
   constructor(
@@ -43,6 +47,15 @@ export async function registerUser(
   }
 
   const { fullName, email, password } = parsedInput.data;
+
+  await enforceRateLimits([
+    {
+      key: buildRateLimitKey("register:ip", sessionContext.ipAddress ?? "unknown"),
+      limit: REGISTRATIONS_PER_IP,
+      windowMs: REGISTRATION_WINDOW_MS,
+    },
+  ]);
+
   const passwordHash = await hashPassword(password);
 
   try {
