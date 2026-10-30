@@ -5,6 +5,7 @@ import {
 } from "@prisma/client";
 import { z } from "zod";
 
+import { generateGeminiJson, getGeminiApiKey } from "@/lib/ai/gemini";
 import { db } from "@/lib/db";
 import { createEmailDeliveryLog } from "@/lib/email/delivery-logs";
 import {
@@ -24,8 +25,6 @@ import {
 import { logServiceError } from "@/lib/observability/error-logging";
 import { buildSignalsFromOfferRecord, recordSearchBehaviorEvent } from "@/server/application/personalization/search-behavior-service";
 import { getRequiredActiveWorkspaceIdForUser } from "@/server/application/workspace/workspace-service";
-
-const GEMINI_REQUEST_TIMEOUT_MS = 30000;
 
 const generatedDraftSchema = z.object({
   subject: z.string().trim().min(6).max(160),
@@ -147,15 +146,6 @@ function toListItem(draft: DraftSelectPayload): EmailDraftListItem {
   };
 }
 
-function getGeminiApiKey() {
-  return (
-    process.env.GEMINI_API_KEY?.trim() ||
-    process.env.GOOGLE_API_KEY?.trim() ||
-    process.env.GOOGLE_GENAI_API_KEY?.trim() ||
-    null
-  );
-}
-
 function buildPersonalizationSummary(
   prompt: OfferEmailPersonalizationPrompt,
   matchExplanation: string | null,
@@ -186,70 +176,29 @@ function buildFallbackDraft(prompt: OfferEmailPersonalizationPrompt) {
 }
 
 async function generateDraftWithGemini(prompt: OfferEmailPersonalizationPrompt, apiKey: string) {
-  const model = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-    {
-      method: "POST",
-      signal: AbortSignal.timeout(GEMINI_REQUEST_TIMEOUT_MS),
-      headers: {
-        "content-type": "application/json",
-        "x-goog-api-key": apiKey,
+  const { model, data } = await generateGeminiJson({
+    apiKey,
+    prompt: prompt.userPrompt,
+    systemPrompt: prompt.systemPrompt,
+    responseJsonSchema: {
+      type: "object",
+      properties: {
+        subject: {
+          type: "string",
+          description: "Email subject line in French.",
+        },
+        body: {
+          type: "string",
+          description: "Email body in French, plain text only.",
+        },
       },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: prompt.systemPrompt }],
-        },
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: prompt.userPrompt }],
-          },
-        ],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseJsonSchema: {
-            type: "object",
-            properties: {
-              subject: {
-                type: "string",
-                description: "Email subject line in French.",
-              },
-              body: {
-                type: "string",
-                description: "Email body in French, plain text only.",
-              },
-            },
-            required: ["subject", "body"],
-          },
-        },
-      }),
+      required: ["subject", "body"],
     },
-  );
-
-  if (!response.ok) {
-    throw new Error(`Gemini request failed with status ${response.status}`);
-  }
-
-  const payload = (await response.json()) as {
-    candidates?: Array<{
-      content?: {
-        parts?: Array<{
-          text?: string;
-        }>;
-      };
-    }>;
-  };
-
-  const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!text) {
-    throw new Error("Gemini returned no draft payload");
-  }
+  });
 
   return {
     model,
-    draft: generatedDraftSchema.parse(JSON.parse(text)),
+    draft: generatedDraftSchema.parse(data),
   };
 }
 

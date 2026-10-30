@@ -1,11 +1,10 @@
 import { z } from "zod";
 
+import { generateGeminiJson, getGeminiApiKey } from "@/lib/ai/gemini";
 import type { PersonalProfileFile } from "@/lib/config/personal-profile";
 import type { SearchTargetsFile } from "@/lib/config/search-targets";
 import { logServiceError } from "@/lib/observability/error-logging";
 import { normalizeListItem } from "@/lib/profile/schema";
-
-const GEMINI_REQUEST_TIMEOUT_MS = 30000;
 
 const domainBootstrapSchema = z.object({
   summary: z.string().trim().min(1).max(400),
@@ -169,98 +168,56 @@ async function generateWithGemini(
   searchTargets: SearchTargetsFile,
   apiKey: string,
 ) {
-  const model = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
   const prompt = buildGeminiDomainBootstrapPrompt(personalProfile, searchTargets);
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-    {
-      method: "POST",
-      signal: AbortSignal.timeout(GEMINI_REQUEST_TIMEOUT_MS),
-      headers: {
-        "content-type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: prompt }],
-          },
-        ],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseJsonSchema: {
+  const { data } = await generateGeminiJson({
+    apiKey,
+    prompt: prompt,
+    responseJsonSchema: {
+      type: "object",
+      properties: {
+        summary: {
+          type: "string",
+          description: "Short explanation of the generated base.",
+        },
+        domains: {
+          type: "array",
+          items: {
             type: "object",
             properties: {
-              summary: {
+              label: { type: "string", description: "Domain name." },
+              rationale: {
                 type: "string",
-                description: "Short explanation of the generated base.",
-              },
-              domains: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    label: { type: "string", description: "Domain name." },
-                    rationale: {
-                      type: "string",
-                      description: "Why this domain fits the profile.",
-                    },
-                  },
-                  required: ["label", "rationale"],
-                },
-              },
-              targetRoles: {
-                type: "array",
-                items: { type: "string" },
-              },
-              locations: {
-                type: "array",
-                items: { type: "string" },
-              },
-              keywords: {
-                type: "array",
-                items: { type: "string" },
+                description: "Why this domain fits the profile.",
               },
             },
-            required: ["summary", "domains", "targetRoles", "locations", "keywords"],
+            required: ["label", "rationale"],
           },
         },
-      }),
+        targetRoles: {
+          type: "array",
+          items: { type: "string" },
+        },
+        locations: {
+          type: "array",
+          items: { type: "string" },
+        },
+        keywords: {
+          type: "array",
+          items: { type: "string" },
+        },
+      },
+      required: ["summary", "domains", "targetRoles", "locations", "keywords"],
     },
-  );
+  });
 
-  if (!response.ok) {
-    throw new Error(`Gemini request failed with status ${response.status}`);
-  }
-
-  const payload = (await response.json()) as {
-    candidates?: Array<{
-      content?: {
-        parts?: Array<{
-          text?: string;
-        }>;
-      };
-    }>;
-  };
-
-  const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!text) {
-    throw new Error("Gemini returned no structured payload");
-  }
-
-  return domainBootstrapSchema.parse(JSON.parse(text));
+  return domainBootstrapSchema.parse(data);
 }
 
 export async function generateDomainBootstrap(
   personalProfile: PersonalProfileFile,
   searchTargets: SearchTargetsFile,
 ): Promise<DomainBootstrapResult> {
-  const apiKey =
-    process.env.GEMINI_API_KEY?.trim() ||
-    process.env.GOOGLE_API_KEY?.trim() ||
-    process.env.GOOGLE_GENAI_API_KEY?.trim();
+  const apiKey = getGeminiApiKey();
 
   if (apiKey) {
     try {
