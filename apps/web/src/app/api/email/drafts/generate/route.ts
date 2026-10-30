@@ -9,6 +9,7 @@ import { generateOfferDraftForViewer } from "@/server/facades/email-facade";
 
 const generateDraftRequestSchema = z.object({
   jobOfferId: z.string().trim().min(1),
+  kind: z.enum(["APPLICATION", "FOLLOW_UP", "COVER_LETTER"]).default("APPLICATION"),
 });
 
 export const runtime = "nodejs";
@@ -69,7 +70,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const draft = await generateOfferDraftForViewer(viewer, parsed.data.jobOfferId);
+    const draft = await generateOfferDraftForViewer(
+      viewer,
+      parsed.data.jobOfferId,
+      parsed.data.kind,
+    );
 
     return NextResponse.json(draft, {
       status: 200,

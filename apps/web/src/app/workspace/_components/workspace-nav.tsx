@@ -56,6 +56,12 @@ const secondaryGroups = [
         shortLabel: "EM",
       },
       {
+        href: "/workspace/applications",
+        label: "Candidatures",
+        description: "Suivi, relances et entretiens",
+        shortLabel: "CA",
+      },
+      {
         href: "/workspace/drafts",
         label: "Brouillons",
         description: "Relire et copier les emails générés",
