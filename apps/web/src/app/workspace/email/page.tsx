@@ -91,7 +91,7 @@ export default async function EmailWorkspacePage({
       <section className="app-hero p-6 md:p-8">
         <p className="app-kicker">Messagerie</p>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
-          Suivie de candidature en direct.
+          Suivi de candidature en direct.
         </h1>
         <p className="app-copy mt-4 max-w-3xl">
           La connexion Gmail se lance maintenant depuis le tableau de bord. Cette page
