@@ -7,6 +7,8 @@ import {
   mapAccountToProfileDraft,
 } from "@/lib/profile/profile-form-data";
 
+import { AccountDataPanel } from "./_components/account-data-panel";
+
 export default async function ProfileManagementPage() {
   const viewer = await getCurrentViewer();
 
@@ -173,6 +175,8 @@ export default async function ProfileManagementPage() {
           </div>
         </article>
       </section>
+
+      <AccountDataPanel />
     </main>
   );
 }
