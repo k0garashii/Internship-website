@@ -8,6 +8,7 @@ import {
 } from "@/lib/profile/profile-form-data";
 
 import { AccountDataPanel } from "./_components/account-data-panel";
+import { DailyDigestPanel } from "./_components/daily-digest-panel";
 
 export default async function ProfileManagementPage() {
   const viewer = await getCurrentViewer();
@@ -175,6 +176,11 @@ export default async function ProfileManagementPage() {
           </div>
         </article>
       </section>
+
+      <DailyDigestPanel
+        initialEnabled={draft.dailyDigestEnabled}
+        sentByAppMailer={Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM)}
+      />
 
       <AccountDataPanel />
     </main>

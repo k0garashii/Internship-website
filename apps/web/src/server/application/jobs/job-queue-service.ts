@@ -58,9 +58,12 @@ export async function claimNextAppJob(types?: AppJobType[]) {
 
     const lockToken = randomUUID();
 
-    return tx.appJob.update({
+    // Conditional update: if another worker claimed the job in between, nothing
+    // is updated and this worker skips it instead of running it twice.
+    const claimed = await tx.appJob.updateMany({
       where: {
         id: candidate.id,
+        status: AppJobStatus.PENDING,
       },
       data: {
         status: AppJobStatus.RUNNING,
@@ -72,7 +75,60 @@ export async function claimNextAppJob(types?: AppJobType[]) {
         },
       },
     });
+
+    if (claimed.count === 0) {
+      return null;
+    }
+
+    return tx.appJob.findUnique({
+      where: {
+        id: candidate.id,
+      },
+    });
   });
+}
+
+// A serverless invocation can be killed mid-job, leaving it RUNNING forever.
+// Such jobs go back to the queue, or fail once their attempts are exhausted.
+export async function releaseStaleAppJobs(staleAfterMs: number) {
+  const staleBefore = new Date(Date.now() - staleAfterMs);
+  const where = {
+    status: AppJobStatus.RUNNING,
+    lockedAt: {
+      lt: staleBefore,
+    },
+  };
+  const [failed, requeued] = await db.$transaction([
+    db.appJob.updateMany({
+      where: {
+        ...where,
+        attemptCount: {
+          gte: db.appJob.fields.maxAttempts,
+        },
+      },
+      data: {
+        status: AppJobStatus.FAILED,
+        lastError: "Job interrupted before completion",
+        finishedAt: new Date(),
+        lockToken: null,
+        lockedAt: null,
+      },
+    }),
+    db.appJob.updateMany({
+      where,
+      data: {
+        status: AppJobStatus.PENDING,
+        lastError: "Job interrupted before completion, requeued",
+        lockToken: null,
+        lockedAt: null,
+      },
+    }),
+  ]);
+
+  return {
+    failedCount: failed.count,
+    requeuedCount: requeued.count,
+  };
 }
 
 export async function completeAppJob(
