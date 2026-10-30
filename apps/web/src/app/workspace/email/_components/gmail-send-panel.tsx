@@ -25,7 +25,7 @@ function getOperationLabel(value: EmailDeliveryLogListItem["operation"]) {
     case "ADHOC_GMAIL_SEND":
       return "Envoi direct";
     case "GMAIL_DRAFT":
-      return "Creation brouillon";
+      return "Création brouillon";
     case "GMAIL_SEND":
       return "Envoi depuis brouillon";
     default:
@@ -41,7 +41,7 @@ export function GmailSendPanel({
   const [recipientEmail, setRecipientEmail] = useState(defaultRecipientEmail);
   const [subject, setSubject] = useState("Test Gmail Internship");
   const [body, setBody] = useState(
-    "Bonjour,\n\nCeci est un email de verification envoye depuis l application Internship.\n\nMerci.",
+    "Bonjour,\n\nCeci est un email de vérification envoyé depuis l’application Internship.\n\nMerci.",
   );
   const [logs, setLogs] = useState(initialLogs);
   const [message, setMessage] = useState<string | null>(null);
@@ -72,7 +72,7 @@ export function GmailSendPanel({
     };
 
     if (!response.ok) {
-      setError(payload.error ?? "Impossible d envoyer le mail de test");
+      setError(payload.error ?? "Impossible d’envoyer le mail de test");
       if (payload.logs) {
         setLogs(payload.logs);
       }
@@ -93,11 +93,11 @@ export function GmailSendPanel({
             Envoi Gmail
           </p>
           <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-            Envoyer un mail depuis l application.
+            Envoyer un mail depuis l’application.
           </h2>
           <p className="text-sm leading-7 text-foreground">
-            Ce bloc permet de verifier l envoi Gmail sans passer par une offre. Il
-            utilise les memes permissions que les envois finaux depuis les brouillons.
+            Ce bloc permet de vérifier l’envoi Gmail sans passer par une offre. Il
+            utilise les mêmes permissions que les envois finaux depuis les brouillons.
           </p>
         </div>
 
@@ -178,14 +178,14 @@ export function GmailSendPanel({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-              Journal d envoi
+              Journal d’envoi
             </p>
             <h3 className="mt-3 text-xl font-semibold tracking-tight text-foreground">
-              Tentatives Gmail recentes.
+              Tentatives Gmail récentes.
             </h3>
           </div>
           <div className="rounded-full border border-line bg-white px-4 py-2 text-sm text-foreground">
-            {logs.length} entree(s)
+            {logs.length} entrée(s)
           </div>
         </div>
 
@@ -240,7 +240,7 @@ export function GmailSendPanel({
             ))
           ) : (
             <div className="rounded-[1.25rem] border border-dashed border-line bg-white/70 p-5 text-sm leading-7 text-muted">
-              Aucune tentative d envoi Gmail n est encore journalisee.
+              Aucune tentative d’envoi Gmail n’est encore journalisée.
             </div>
           )}
         </div>

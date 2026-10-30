@@ -39,7 +39,7 @@ export async function sendAdhocGmailMessage(
   const parsed = adhocGmailSendInputSchema.safeParse(input);
 
   if (!parsed.success) {
-    throw new GmailSendError("Payload d envoi Gmail invalide", 400);
+    throw new GmailSendError("Payload d’envoi Gmail invalide", 400);
   }
 
   try {
@@ -113,6 +113,6 @@ export async function sendAdhocGmailMessage(
       throw new GmailSendError(error.message, error.status);
     }
 
-    throw new GmailSendError("Impossible d envoyer le mail via Gmail", 500);
+    throw new GmailSendError("Impossible d’envoyer le mail via Gmail", 500);
   }
 }

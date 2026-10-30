@@ -19,14 +19,14 @@ export default async function SignUpPage() {
           Retour accueil
         </Link>
         <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-foreground md:text-6xl">
-          Cree ton espace personnel.
+          Crée ton espace personnel.
         </h1>
         <p className="app-copy max-w-2xl">
-          L inscription sert a ouvrir ton espace de travail, poser un premier profil
-          vide et te faire entrer directement dans l application.
+          L’inscription sert à ouvrir ton espace de travail, poser un premier profil
+          vide et te faire entrer directement dans l’application.
         </p>
         <p className="text-sm leading-7 text-muted">
-          Tu as deja un compte ?
+          Tu as déjà un compte ?
           {" "}
           <Link href="/sign-in" className="font-medium text-foreground underline">
             Connecte-toi ici.
@@ -42,8 +42,8 @@ export default async function SignUpPage() {
           </p>
           <ul className="mt-5 space-y-4 text-sm leading-7 text-foreground md:text-base">
             <li>Tu arrives ensuite dans ton espace personnel sans devoir te reconnecter.</li>
-            <li>Le profil complet et les preferences restent modifiables a tout moment.</li>
-            <li>Les prochains ecrans te guident vers la recherche et les brouillons email.</li>
+            <li>Le profil complet et les préférences restent modifiables à tout moment.</li>
+            <li>Les prochains écrans te guident vers la recherche et les brouillons email.</li>
           </ul>
         </aside>
       </section>

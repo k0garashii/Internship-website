@@ -16,11 +16,11 @@ function labelFromMode(mode: string) {
     case "BOOST_ONLY":
       return "Renfort seulement";
     case "ALLOW_EXPLORATION":
-      return "Exploration autorisee";
+      return "Exploration autorisée";
     case "REQUIRES_CONFIRMATION":
-      return "Confirmation necessaire";
+      return "Confirmation nécessaire";
     case "NEGATIVE_ONLY_WITH_STRONG_SIGNAL":
-      return "Negatif sous signal fort";
+      return "Négatif sous signal fort";
     default:
       return mode;
   }
@@ -45,7 +45,7 @@ function labelFromAxis(axis: string) {
     case "COMPANY":
       return "Entreprise";
     case "COMPANY_TYPE":
-      return "Type d entreprise";
+      return "Type d’entreprise";
     case "OUTCOME":
       return "Resultat";
     default:
@@ -67,7 +67,7 @@ function labelFromConfidence(confidence: string) {
 }
 
 function labelFromPolarity(polarity: string) {
-  return polarity === "NEGATIVE" ? "A ecarter" : "Renforce";
+  return polarity === "NEGATIVE" ? "À écarter" : "Renforce";
 }
 
 function polarityClass(polarity: string) {
@@ -170,11 +170,11 @@ export default async function InferenceProfilePage() {
           </h1>
           <p className="app-copy mt-4 max-w-3xl">
             Lance quelques recherches, ouvre des offres et donne du feedback pour que
-            l application commence a apprendre ce qui te correspond.
+            l’application commence à apprendre ce qui te correspond.
           </p>
           <div className="mt-6">
             <Link href="/workspace/search" className="back-link">
-              Retour a la recherche
+              Retour à la recherche
             </Link>
           </div>
         </section>
@@ -197,11 +197,11 @@ export default async function InferenceProfilePage() {
           <div>
             <p className="app-kicker">Profil implicite</p>
             <h1 className="mt-4 max-w-4xl text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
-              Ce que l application apprend de ta recherche.
+              Ce que l’application apprend de ta recherche.
             </h1>
             <p className="app-copy mt-4 max-w-4xl">
-              Cette vue reste diagnostique: le profil declare garde la main, et les
-              signaux implicites servent surtout a mieux classer les offres.
+              Cette vue reste diagnostique: le profil déclaré garde la main, et les
+              signaux implicites servent surtout à mieux classer les offres.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -221,7 +221,7 @@ export default async function InferenceProfilePage() {
       <section className="grid gap-4 md:grid-cols-4">
         <article className="rounded-[1.5rem] border border-line bg-card p-5 shadow-[0_18px_45px_rgba(31,41,55,0.05)]">
           <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-            Signaux observes
+            Signaux observés
           </p>
           <p className="mt-3 text-3xl font-semibold text-foreground">
             {diagnostics.eventCount}
@@ -229,7 +229,7 @@ export default async function InferenceProfilePage() {
         </article>
         <article className="rounded-[1.5rem] border border-line bg-card p-5 shadow-[0_18px_45px_rgba(31,41,55,0.05)]">
           <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-            Preferences inferees
+            Préférences inférées
           </p>
           <p className="mt-3 text-3xl font-semibold text-foreground">
             {snapshot.inferred.length}
@@ -238,7 +238,7 @@ export default async function InferenceProfilePage() {
         {formatDate(personalization.lastComputedAt) ? (
           <article className="rounded-[1.5rem] border border-line bg-card p-5 shadow-[0_18px_45px_rgba(31,41,55,0.05)]">
             <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-              Derniere mise a jour
+              Dernière mise à jour
             </p>
             <p className="mt-3 text-sm leading-7 text-foreground">
               {formatDate(personalization.lastComputedAt)}
@@ -265,18 +265,18 @@ export default async function InferenceProfilePage() {
             {diagnostics.implicitSignalSummary.dwellQualifiedOpenCount}
           </p>
           <p className="mt-2 text-sm leading-7 text-muted">
-            Offres ouvertes puis lues assez longtemps pour signaler un vrai interet.
+            Offres ouvertes puis lues assez longtemps pour signaler un vrai intérêt.
           </p>
         </article>
         <article className="rounded-[1.5rem] border border-line bg-card p-5 shadow-[0_18px_45px_rgba(31,41,55,0.05)]">
           <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-            Entreprises explorees
+            Entreprises explorées
           </p>
           <p className="mt-3 text-3xl font-semibold text-foreground">
             {diagnostics.implicitSignalSummary.companyExplorationCount}
           </p>
           <p className="mt-2 text-sm leading-7 text-muted">
-            Ouvertures d entreprises cibles ou de leur portail carriere.
+            Ouvertures d’entreprises cibles ou de leur portail carrière.
           </p>
         </article>
         <article className="rounded-[1.5rem] border border-line bg-card p-5 shadow-[0_18px_45px_rgba(31,41,55,0.05)]">
@@ -287,18 +287,18 @@ export default async function InferenceProfilePage() {
             {formatPointDelta(diagnostics.convergence.averageTopScoreDelta)}
           </p>
           <p className="mt-2 text-sm leading-7 text-muted">
-            Evolution moyenne des 5 meilleures offres entre les premiers et derniers runs comparables.
+            Évolution moyenne des 5 meilleures offres entre les premiers et derniers runs comparables.
           </p>
         </article>
         <article className="rounded-[1.5rem] border border-line bg-card p-5 shadow-[0_18px_45px_rgba(31,41,55,0.05)]">
           <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-            Recherches comparees
+            Recherches comparées
           </p>
           <p className="mt-3 text-3xl font-semibold text-foreground">
             {diagnostics.convergence.evaluatedRunCount}
           </p>
           <p className="mt-2 text-sm leading-7 text-muted">
-            Nombre de recherches reutilisables pour mesurer une tendance.
+            Nombre de recherches réutilisables pour mesurer une tendance.
           </p>
         </article>
       </section>
@@ -317,7 +317,7 @@ export default async function InferenceProfilePage() {
             </div>
             <div className="rounded-[1.25rem] border border-line bg-white/70 p-4">
               <p className="text-xs uppercase tracking-[0.16em] text-muted">
-                Offres mieux classees
+                Offres mieux classées
               </p>
               <p className="mt-2 text-2xl font-semibold text-foreground">
                 {diagnostics.impact.personalizedWins}
@@ -343,11 +343,11 @@ export default async function InferenceProfilePage() {
             ) : null}
             {diagnostics.convergence.relevantShareDelta !== null ? (
               <p>
-                Evolution de la part d offres bien alignees:{" "}
+                Évolution de la part d’offres bien alignées:{" "}
                 {formatPercentagePointDelta(diagnostics.convergence.relevantShareDelta)}.
               </p>
             ) : (
-              <p>Pas encore assez de runs pour mesurer la part d offres bien alignees.</p>
+              <p>Pas encore assez de runs pour mesurer la part d’offres bien alignées.</p>
             )}
           </div>
         </article>
@@ -356,13 +356,13 @@ export default async function InferenceProfilePage() {
       <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <article className="rounded-[1.75rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] md:p-8">
           <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-            Preferences inferees
+            Préférences inférées
           </p>
           {negativePreferenceCount === 0 && explicitNegativeSignalCount === 0 ? (
             <div className="mt-6 rounded-[1.25rem] border border-amber-200 bg-amber-50/80 p-4 text-sm leading-7 text-amber-900">
-              Aucun signal negatif explicite n a encore ete observe. Tant que tu n utilises
-              pas de feedback &quot;non pertinente&quot;, de suppression d offre ou d issue negative,
-              l inference restera surtout positive.
+              Aucun signal négatif explicite n’a encore été observé. Tant que tu n’utilises
+              pas de feedback &quot;non pertinente&quot;, de suppression d’offre ou d’issue négative,
+              l’inférence restera surtout positive.
             </div>
           ) : null}
           <div className="mt-6 space-y-3">
@@ -383,7 +383,7 @@ export default async function InferenceProfilePage() {
                   </div>
                   <p className="mt-3 text-lg font-medium text-foreground">{preference.value}</p>
                   <p className="mt-1 text-sm text-muted">
-                    Intensite {formatPreferenceIntensity(preference.score)}/100 -{" "}
+                    Intensité {formatPreferenceIntensity(preference.score)}/100 -{" "}
                     {preference.supportingEventCount} signal(aux) utile(s)
                   </p>
                   {preference.lastObservedAt ? (
@@ -398,7 +398,7 @@ export default async function InferenceProfilePage() {
               ))
             ) : (
               <p className="text-sm leading-7 text-muted">
-                Aucune preference inferee n est disponible.
+                Aucune préférence inférée n’est disponible.
               </p>
             )}
           </div>
@@ -429,7 +429,7 @@ export default async function InferenceProfilePage() {
 
           <article className="rounded-[1.75rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] md:p-8">
             <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-              Signaux les plus frequents
+              Signaux les plus fréquents
             </p>
             <div className="mt-6 space-y-3">
               {Object.entries(diagnostics.eventTypeCounts).length > 0 ? (
@@ -457,7 +457,7 @@ export default async function InferenceProfilePage() {
 
           <article className="rounded-[1.75rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] md:p-8">
             <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-              Tendance recente
+              Tendance récente
             </p>
             <div className="mt-6 space-y-3">
               {diagnostics.convergence.recentRuns.length > 0 ? (
@@ -480,14 +480,14 @@ export default async function InferenceProfilePage() {
                     </p>
                     {run.relevantShare !== null ? (
                       <p className="mt-2 text-sm leading-7 text-foreground">
-                        Part d offres bien alignees: {formatPercentage(run.relevantShare)}
+                        Part d’offres bien alignées: {formatPercentage(run.relevantShare)}
                       </p>
                     ) : null}
                   </div>
                 ))
               ) : (
                 <p className="text-sm leading-7 text-muted">
-                  Pas encore assez de recherches comparees pour suivre une tendance.
+                  Pas encore assez de recherches comparées pour suivre une tendance.
                 </p>
               )}
             </div>

@@ -72,17 +72,17 @@ export function WorkspaceSwitcher({ currentWorkspace, accessibleWorkspaces }: Pr
         Basculer entre les espaces accessibles
       </h2>
       <p className="mt-3 text-sm leading-7 text-muted">
-        Le produit reste aujourd hui centré sur un workspace personnel, mais le
+        Le produit reste aujourd’hui centré sur un workspace personnel, mais le
         switcher est déjà prêt pour le multi-espace.
       </p>
 
       <div className="mt-5 rounded-[1.25rem] border border-line bg-white/70 p-4">
-        <p className="text-sm text-muted">Selection courante</p>
+        <p className="text-sm text-muted">Sélection courante</p>
         <p className="mt-2 text-lg font-medium text-foreground">
           {currentWorkspace.name ?? "Workspace actif"}
         </p>
         <p className="mt-1 text-xs text-muted">
-          /{currentWorkspace.slug ?? "workspace"} • {currentWorkspace.role ?? "role inconnu"}
+          /{currentWorkspace.slug ?? "workspace"} • {currentWorkspace.role ?? "rôle inconnu"}
         </p>
       </div>
 
@@ -99,7 +99,7 @@ export function WorkspaceSwitcher({ currentWorkspace, accessibleWorkspaces }: Pr
                 <p className="text-sm font-medium text-foreground">{workspace.name}</p>
                 <p className="mt-1 text-xs text-muted">
                   /{workspace.slug} • {workspace.role}
-                  {workspace.isDefault ? " • par defaut" : ""}
+                  {workspace.isDefault ? " • par défaut" : ""}
                 </p>
               </div>
               <button

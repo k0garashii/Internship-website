@@ -34,7 +34,7 @@ export function CompanyTargetsPanel({ disabled }: Props) {
     };
 
     if (!response.ok) {
-      setError(payload.error ?? "Impossible de generer une liste d entreprises cibles");
+      setError(payload.error ?? "Impossible de générer une liste d’entreprises cibles");
       setIsLoading(false);
       return;
     }
@@ -68,7 +68,7 @@ export function CompanyTargetsPanel({ disabled }: Props) {
     };
 
     if (!response.ok) {
-      setDiscoveryError(payload.error ?? "Impossible de decouvrir les pages carrieres");
+      setDiscoveryError(payload.error ?? "Impossible de découvrir les pages carrières");
       setIsDiscovering(false);
       return;
     }
@@ -161,11 +161,11 @@ export function CompanyTargetsPanel({ disabled }: Props) {
             Entreprises cibles
           </p>
           <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-            Identifier les employeurs a prioriser
+            Identifier les employeurs à prioriser
           </h2>
           <p className="text-sm leading-7 text-foreground">
-            Cette etape transforme le profil en hypotheses d entreprises a investiguer.
-            Elle sert a orienter la suite vers les sites carrieres proprietaires et les
+            Cette étape transforme le profil en hypothèses d’entreprises à investiguer.
+            Elle sert à orienter la suite vers les sites carrières propriétaires et les
             portails de recrutement avant de se limiter aux job boards.
           </p>
         </div>
@@ -176,12 +176,12 @@ export function CompanyTargetsPanel({ disabled }: Props) {
           disabled={disabled || isLoading}
           className="inline-flex w-full items-center justify-center rounded-full border border-line px-5 py-3 text-sm font-medium text-foreground transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isLoading ? "Generation..." : "Generer des entreprises cibles"}
+          {isLoading ? "Generation..." : "Générer des entreprises cibles"}
         </button>
 
         {result ? (
           <div aria-live="polite" className="text-sm leading-7 text-muted">
-            {`${result.suggestions.length} entreprise(s) cible(s) proposee(s).`}
+            {`${result.suggestions.length} entreprise(s) cible(s) proposée(s).`}
           </div>
         ) : null}
 
@@ -192,8 +192,8 @@ export function CompanyTargetsPanel({ disabled }: Props) {
           className="inline-flex w-full items-center justify-center rounded-full bg-foreground px-5 py-3 text-sm font-medium text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isDiscovering
-            ? "Decouverte en cours..."
-            : "Decouvrir les pages carrieres et portails de recrutement"}
+            ? "Découverte en cours..."
+            : "Découvrir les pages carrières et portails de recrutement"}
         </button>
 
         {error ? (
@@ -217,7 +217,7 @@ export function CompanyTargetsPanel({ disabled }: Props) {
         {result ? (
           <div className="space-y-4 rounded-[1.5rem] border border-line bg-white/70 p-5">
             <div>
-              <p className="text-sm text-muted">Resume</p>
+              <p className="text-sm text-muted">Résumé</p>
               <p className="mt-2 text-sm leading-7 text-foreground">{result.summary}</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -230,13 +230,13 @@ export function CompanyTargetsPanel({ disabled }: Props) {
               <div className="surface-muted rounded-[1.25rem] p-4">
                 <p className="text-xs uppercase tracking-[0.16em] text-muted">Suite</p>
                 <p className="mt-2 text-sm leading-6 text-foreground">
-                  Prochaine etape: decouvrir les pages carrieres et portails de recrutement de ces entreprises.
+                  Prochaine étape: découvrir les pages carrières et portails de recrutement de ces entreprises.
                 </p>
               </div>
             </div>
             {discoveryResult ? (
               <div>
-                <p className="text-sm text-muted">Decouverte</p>
+                <p className="text-sm text-muted">Découverte</p>
                 <p className="mt-2 text-sm leading-7 text-foreground">
                   {discoveryResult.summary}
                 </p>
@@ -298,11 +298,11 @@ export function CompanyTargetsPanel({ disabled }: Props) {
                       {suggestion.companyName}
                     </h3>
                     <p className="mt-2 text-sm text-muted">
-                      Priorite suggeree: {suggestion.priority}/100
+                      Priorité suggérée: {suggestion.priority}/100
                     </p>
                     {discovery?.careerPageUrl ? (
                       <p className="mt-2 text-xs uppercase tracking-[0.14em] text-muted">
-                        Cliquer sur la carte pour voir les offres de l entreprise
+                        Cliquer sur la carte pour voir les offres de l’entreprise
                       </p>
                     ) : null}
                   </div>
@@ -337,7 +337,7 @@ export function CompanyTargetsPanel({ disabled }: Props) {
                       onClick={(event) => event.stopPropagation()}
                       className="inline-flex items-center justify-center rounded-full bg-foreground px-4 py-2 text-sm font-medium text-white transition hover:-translate-y-0.5"
                     >
-                      Page carriere
+                      Page carrière
                     </a>
                   ) : null}
                 </div>
@@ -355,7 +355,7 @@ export function CompanyTargetsPanel({ disabled }: Props) {
                   <div className="space-y-3 rounded-[1.5rem] border border-line bg-white/70 p-4">
                   {suggestion.matchedSignals.length > 0 ? (
                     <>
-                      <p className="text-sm font-medium text-foreground">Signaux detectes</p>
+                      <p className="text-sm font-medium text-foreground">Signaux détectés</p>
                       <div className="flex flex-wrap gap-2">
                         {suggestion.matchedSignals.map((signal) => (
                           <span
@@ -376,7 +376,7 @@ export function CompanyTargetsPanel({ disabled }: Props) {
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                       <p className="text-sm font-medium text-foreground">
-                        Decouverte carriere
+                        Découverte carrière
                       </p>
                       {discovery.notes ? (
                         <p className="mt-2 text-sm leading-7 text-foreground">
@@ -395,10 +395,10 @@ export function CompanyTargetsPanel({ disabled }: Props) {
                         }
                       >
                         {discovery.status === "found"
-                          ? "Point d entree detecte"
+                          ? "Point d’entrée détecté"
                           : discovery.status === "error"
-                            ? "Erreur de detection"
-                            : "Non detecte"}
+                            ? "Erreur de détection"
+                            : "Non détecté"}
                       </span>
                       {discovery.discoveryMethod ? (
                         <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground">
@@ -406,7 +406,7 @@ export function CompanyTargetsPanel({ disabled }: Props) {
                         </span>
                       ) : null}
                       <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground">
-                        fiabilite {discovery.confidence}
+                        fiabilité {discovery.confidence}
                       </span>
                       {discovery.atsProvider ? (
                         <span className="status-pill status-pill-accent">
@@ -467,7 +467,7 @@ export function CompanyTargetsPanel({ disabled }: Props) {
           })
         ) : (
           <article className="rounded-[1.75rem] border border-dashed border-line bg-card/70 p-8 text-sm leading-7 text-muted">
-            Genere une premiere liste d entreprises cibles pour orienter la suite de la
+            Génère une première liste d’entreprises cibles pour orienter la suite de la
             collecte vers les bons employeurs et leurs vraies sources.
           </article>
         )}

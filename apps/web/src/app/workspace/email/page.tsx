@@ -9,18 +9,18 @@ import { GmailMailboxPanel } from "./_components/gmail-mailbox-panel";
 function getMailboxSummaryLabel() {
   return (snapshot: Awaited<ReturnType<typeof getGmailConnectionSnapshot>>) => {
     if (!snapshot.source) {
-      return "Non connectee";
+      return "Non connectée";
     }
 
     if (snapshot.source.status === "ERROR") {
-      return "Connectee avec erreur de sync";
+      return "Connectée avec erreur de sync";
     }
 
     if (snapshot.source.status === "DISABLED") {
       return "Desactivee";
     }
 
-    return snapshot.configured ? "Connectee" : "Connexion a completer";
+    return snapshot.configured ? "Connectee" : "Connexion à compléter";
   };
 }
 
@@ -29,32 +29,32 @@ function getBannerMessage(status: string | null | undefined) {
     case "connected":
       return {
         tone: "success" as const,
-        message: "Gmail est connecte et la premiere synchronisation a ete terminee.",
+        message: "Gmail est connecté et la première synchronisation a été terminée.",
       };
     case "connected-needs-sync":
       return {
         tone: "warn" as const,
-        message: "Gmail est connecte, mais la premiere synchronisation doit etre relancee manuellement.",
+        message: "Gmail est connecté, mais la première synchronisation doit être relancée manuellement.",
       };
     case "oauth-denied":
       return {
         tone: "warn" as const,
-        message: "La connexion Google a ete annulee avant la fin.",
+        message: "La connexion Google a été annulée avant la fin.",
       };
     case "oauth-invalid-state":
       return {
         tone: "warn" as const,
-        message: "Le retour OAuth Google n a pas pu etre valide. Relance la connexion Gmail.",
+        message: "Le retour OAuth Google n’a pas pu être validé. Relance la connexion Gmail.",
       };
     case "oauth-missing-config":
       return {
         tone: "warn" as const,
-        message: "Les variables Google OAuth ne sont pas encore configurees sur cet environnement.",
+        message: "Les variables Google OAuth ne sont pas encore configurées sur cet environnement.",
       };
     case "oauth-error":
       return {
         tone: "warn" as const,
-        message: "La connexion Google a echoue. Consulte les logs serveur puis relance l autorisation.",
+        message: "La connexion Google a échoué. Consulte les logs serveur puis relance l’autorisation.",
       };
     default:
       return null;
@@ -95,8 +95,8 @@ export default async function EmailWorkspacePage({
         </h1>
         <p className="app-copy mt-4 max-w-3xl">
           La connexion Gmail se lance maintenant depuis le tableau de bord. Cette page
-          reste centree sur la lecture des fils, la synchronisation et l envoi une fois
-          les permissions completes.
+          reste centrée sur la lecture des fils, la synchronisation et l’envoi une fois
+          les permissions complètes.
         </p>
       </section>
 
@@ -125,11 +125,11 @@ export default async function EmailWorkspacePage({
             Envoi Gmail
           </p>
           <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
-            L espace d envoi apparaitra ici apres activation.
+            L’espace d’envoi apparaîtra ici après activation.
           </h2>
           <p className="mt-3 text-sm leading-7 text-foreground">
-            Le bouton d activation brouillons et envoi n apparait plus dans cette
-            page. Il est maintenant propose sur le tableau de bord juste apres la
+            Le bouton d’activation brouillons et envoi n’apparaît plus dans cette
+            page. Il est maintenant proposé sur le tableau de bord juste après la
             connexion Gmail.
           </p>
         </section>

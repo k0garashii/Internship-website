@@ -139,7 +139,7 @@ export function SignInForm() {
         Pas encore de compte ?
         {" "}
         <Link href="/sign-up" className="font-medium text-foreground underline">
-          Cree-en un ici.
+          Crée-en un ici.
         </Link>
       </p>
     </form>

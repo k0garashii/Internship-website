@@ -466,7 +466,7 @@ export async function discoverCareerSourcesForTargets(
 
   return careerSourceDiscoverySchema.parse({
     generatedAt: new Date().toISOString(),
-    summary: `${foundCount} entreprise(s) sur ${settled.length} avec un point d entree carriere detecte automatiquement, dont ${atsCount} ATS explicitement identifies.`,
+    summary: `${foundCount} entreprise(s) sur ${settled.length} avec un point d’entrée carrière détectée automatiquement, dont ${atsCount} ATS explicitement identifiés.`,
     results: settled,
   });
 }

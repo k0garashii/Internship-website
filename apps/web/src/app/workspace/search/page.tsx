@@ -54,15 +54,15 @@ function SearchPlanOverview({ plan }: { plan: SearchQueryPlan }) {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-2">
             <p className="app-kicker">
-              Requetes prevues
+              Requêtes prévues
             </p>
             <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-              Apercu complet du plan avant execution.
+              Aperçu complet du plan avant exécution.
             </h2>
           </div>
           <p className="max-w-xl text-sm leading-7 text-muted">
-            Chaque carte montre le role principal, le domaine associe, la zone prise en
-            compte et les mots-cles vraiment ajoutes a la requete.
+            Chaque carte montre le rôle principal, le domaine associé, la zone prise en
+            compte et les mots-clés vraiment ajoutés à la requête.
           </p>
         </div>
 
@@ -78,13 +78,13 @@ function SearchPlanOverview({ plan }: { plan: SearchQueryPlan }) {
                   <p className="text-sm leading-7 text-muted">{query.explanation}</p>
                 </div>
                 <span className="status-pill status-pill-info">
-                  Priorite {query.priority}
+                  Priorité {query.priority}
                 </span>
               </div>
 
               <div className="mt-4 grid gap-3 md:grid-cols-3">
                 <div className="rounded-[1.25rem] border border-line bg-card p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted">Role</p>
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted">Rôle</p>
                   <p className="mt-2 text-sm font-medium text-foreground">
                     {query.targetRole}
                   </p>
@@ -111,7 +111,7 @@ function SearchPlanOverview({ plan }: { plan: SearchQueryPlan }) {
                 {query.focusKeywords.length > 0 ? (
                   <div>
                     <p className="text-xs uppercase tracking-[0.16em] text-muted">
-                      Mots cles injectes
+                      Mots clés injectés
                     </p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {query.focusKeywords.map((keyword) => (
@@ -178,7 +178,7 @@ export default async function SearchPage() {
         },
       });
 
-      configurationError = "Impossible de preparer la recherche initiale";
+      configurationError = "Impossible de préparer la recherche initiale";
     }
   }
 
@@ -194,7 +194,7 @@ export default async function SearchPage() {
       },
     });
 
-    persistedOffersError = "Impossible de charger les offres deja persistees.";
+    persistedOffersError = "Impossible de charger les offres déjà persistées.";
   }
 
   try {
@@ -209,7 +209,7 @@ export default async function SearchPage() {
       },
     });
 
-    searchHistoryError = "Impossible de charger l historique des recherches.";
+    searchHistoryError = "Impossible de charger l’historique des recherches.";
   }
 
   return (
@@ -219,10 +219,10 @@ export default async function SearchPage() {
           Collecte d&apos;offres
         </p>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
-          Afficher des offres qui ressemblent vraiment a ton profil.
+          Afficher des offres qui ressemblent vraiment à ton profil.
         </h1>
         <div className="status-row mt-6">
-          <div className="status-pill status-pill-info">Entreprises et pages carrieres</div>
+          <div className="status-pill status-pill-info">Entreprises et pages carrières</div>
           <div className="status-pill status-pill-success">Offres web multi-sources</div>
           <div className="status-pill status-pill-accent">Recherche approfondie internet</div>
         </div>

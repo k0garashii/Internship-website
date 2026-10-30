@@ -32,7 +32,7 @@ export default async function ProfileManagementPage() {
           Gestion du profil
         </p>
         <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-foreground md:text-6xl">
-          Modifie ton profil, tes preferences et tes domaines d&apos;action.
+          Modifie ton profil, tes préférences et tes domaines d&apos;action.
         </h1>
       </section>
 
@@ -42,11 +42,11 @@ export default async function ProfileManagementPage() {
             Profil complet
           </p>
           <h2 className="mt-4 text-2xl font-semibold tracking-tight text-foreground">
-            Identite et parcours
+            Identité et parcours
           </h2>
           <p className="mt-3 text-sm leading-7 text-muted">
             {draft.profile.headline ||
-              "Renseigne ton positionnement, tes competences et toutes les contraintes de candidature."}
+              "Renseigne ton positionnement, tes compétences et toutes les contraintes de candidature."}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
@@ -66,21 +66,21 @@ export default async function ProfileManagementPage() {
 
         <article className="rounded-[1.5rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)]">
           <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-            Preferences
+            Préférences
           </p>
           <h2 className="mt-4 text-2xl font-semibold tracking-tight text-foreground">
-            Roles, zones et domaines
+            Rôles, zones et domaines
           </h2>
           <p className="mt-3 text-sm leading-7 text-muted">
             {draft.profile.targetRoles ||
-              "Ajuste ici les postes cibles, les mots cles, les localisations et l ordre des domaines."}
+              "Ajuste ici les postes cibles, les mots clés, les localisations et l’ordre des domaines."}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/workspace/preferences"
               className="inline-flex items-center justify-center rounded-full bg-foreground px-5 py-3 text-sm font-medium text-white transition hover:-translate-y-0.5"
             >
-              Modifier les preferences
+              Modifier les préférences
             </Link>
           </div>
         </article>
@@ -90,12 +90,12 @@ export default async function ProfileManagementPage() {
             Domaines Gemini
           </p>
           <h2 className="mt-4 text-2xl font-semibold tracking-tight text-foreground">
-            Validation integree aux preferences
+            Validation intégrée aux préférences
           </h2>
           <p className="mt-3 text-sm leading-7 text-muted">
             {validatedDomains.length > 0
-              ? `${validatedDomains.length} domaine(s) deja retenu(s). La modification passe maintenant directement par la page preferences.`
-              : "Aucun domaine valide pour l instant. Genere une base initiale puis confirme uniquement ce qui est pertinent dans la page preferences."}
+              ? `${validatedDomains.length} domaine(s) déjà retenu(s). La modification passe maintenant directement par la page préférences.`
+              : "Aucun domaine validé pour l’instant. Génère une base initiale puis confirme uniquement ce qui est pertinent dans la page préférences."}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
@@ -111,39 +111,39 @@ export default async function ProfileManagementPage() {
       <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
         <article className="rounded-[1.75rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] md:p-8">
           <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-            Resume profil
+            Résumé profil
           </p>
           <div className="mt-5 space-y-5">
             <div>
-              <p className="text-sm text-muted">Competences</p>
+              <p className="text-sm text-muted">Compétences</p>
               <p className="mt-2 text-sm leading-7 text-foreground">
-                {draft.profile.skills || "Aucune competence clef encore resumee."}
+                {draft.profile.skills || "Aucune compétence clef encore résumée."}
               </p>
             </div>
             <div>
               <p className="text-sm text-muted">Localisations</p>
               <p className="mt-2 text-sm leading-7 text-foreground">
                 {draft.profile.preferredLocations ||
-                  "Aucune localisation prioritaire encore indiquee."}
+                  "Aucune localisation prioritaire encore indiquée."}
               </p>
             </div>
             <div>
-              <p className="text-sm text-muted">Disponibilite</p>
+              <p className="text-sm text-muted">Disponibilité</p>
               <p className="mt-2 text-sm leading-7 text-foreground">
                 {draft.profile.availabilityDate
-                  ? `Debut ${draft.profile.availabilityDate}${
+                  ? `Début ${draft.profile.availabilityDate}${
                       draft.profile.availabilityEndDate
                         ? ` - Fin ${draft.profile.availabilityEndDate}`
                         : ""
                     }`
-                  : "Aucune fenetre de disponibilite encore precisee."}
+                  : "Aucune fenêtre de disponibilité encore précisée."}
               </p>
             </div>
             <div>
-              <p className="text-sm text-muted">Mots cles</p>
+              <p className="text-sm text-muted">Mots clés</p>
               <p className="mt-2 text-sm leading-7 text-foreground">
                 {draft.profile.searchKeywords ||
-                  "Aucun mot cle de recherche encore structure."}
+                  "Aucun mot clé de recherche encore structuré."}
               </p>
             </div>
           </div>
@@ -162,13 +162,13 @@ export default async function ProfileManagementPage() {
                 >
                   <p className="text-sm font-medium text-foreground">{domain.label}</p>
                   <p className="mt-1 text-sm leading-7 text-muted">
-                    {domain.rationale || "Sans justification detaillee pour l instant."}
+                    {domain.rationale || "Sans justification détaillée pour l’instant."}
                   </p>
                 </div>
               ))
             ) : (
               <p className="text-sm leading-7 text-muted">
-                Aucun domaine retenu. Passe par la page preferences pour construire la
+                Aucun domaine retenu. Passe par la page préférences pour construire la
                 base initiale.
               </p>
             )}

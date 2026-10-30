@@ -1,27 +1,27 @@
 import Link from "next/link";
 
 const strengths = [
-  "Profil utilisateur structure et sauvegarde en base",
-  "Ciblage d entreprises compatibles avec le profil",
-  "Detection de pages carrieres et de portails de recrutement publics",
-  "Collecte web initiale d offres avec score exploratoire",
+  "Profil utilisateur structuré et sauvegardé en base",
+  "Ciblage d’entreprises compatibles avec le profil",
+  "Détection de pages carrières et de portails de recrutement publics",
+  "Collecte web initiale d’offres avec score exploratoire",
 ];
 
 const availableFeatures = [
   {
     title: "Gestion de profil",
     description:
-      "Inscription, connexion, profil complet, fenetre de disponibilite et contraintes de candidature.",
+      "Inscription, connexion, profil complet, fenêtre de disponibilité et contraintes de candidature.",
   },
   {
-    title: "Preferences et domaines",
+    title: "Préférences et domaines",
     description:
-      "Edition rapide des roles, localisations, mots cles et domaines Gemini directement depuis une seule page.",
+      "Édition rapide des rôles, localisations, mots clés et domaines Gemini directement depuis une seule page.",
   },
   {
     title: "Recherche et email",
     description:
-      "Suggestions d entreprises, collecte publique d offres, forwarding email dedie et normalisation commune.",
+      "Suggestions d’entreprises, collecte publique d’offres, forwarding email dédié et normalisation commune.",
   },
 ];
 
@@ -36,12 +36,12 @@ export default function Home() {
             </div>
             <div className="space-y-4">
               <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-foreground md:text-6xl">
-                Trouve des opportunites pertinentes meme hors des circuits les plus visibles.
+                Trouve des opportunités pertinentes même hors des circuits les plus visibles.
               </h1>
               <p className="app-copy max-w-2xl">
-                Le produit centralise le profil candidat, deduit des entreprises cibles,
-                cherche des offres publiques et prepare aussi une entree par email pour
-                recuperer des annonces qui ne remontent pas toujours sur LinkedIn.
+                Le produit centralise le profil candidat, déduit des entreprises cibles,
+                cherche des offres publiques et prépare aussi une entrée par email pour
+                récupérer des annonces qui ne remontent pas toujours sur LinkedIn.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -49,7 +49,7 @@ export default function Home() {
                 href="/sign-up"
                 className="inline-flex items-center justify-center rounded-full bg-foreground px-5 py-3 text-sm font-medium text-white transition-transform hover:-translate-y-0.5"
               >
-                Creer un compte
+                Créer un compte
               </Link>
               <Link
                 href="/sign-in"
@@ -98,14 +98,14 @@ export default function Home() {
       <section className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
         <article className="rounded-[1.75rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] md:p-8">
           <p className="app-kicker">
-            Ce que permet deja le MVP
+            Ce que permet déjà le MVP
           </p>
           <ul className="mt-5 space-y-4 text-sm leading-7 text-foreground md:text-base">
-            <li>Creer un compte, se connecter et proteger les routes privees.</li>
+            <li>Créer un compte, se connecter et protéger les routes privées.</li>
             <li>Structurer le profil et les contraintes de candidature.</li>
-            <li>Generer puis corriger une base initiale de domaines.</li>
-            <li>Identifier des entreprises et leur point d entree carriere.</li>
-            <li>Previsualiser des offres et preparer une collecte email en parallele.</li>
+            <li>Générer puis corriger une base initiale de domaines.</li>
+            <li>Identifier des entreprises et leur point d’entrée carrière.</li>
+            <li>Prévisualiser des offres et préparer une collecte email en parallèle.</li>
           </ul>
         </article>
 
@@ -114,10 +114,10 @@ export default function Home() {
             Ce que tu retrouves ensuite
           </p>
           <p className="mt-5 text-sm leading-7 text-foreground md:text-base">
-            Une fois connecte, l application te guide dans le meme ordre que le besoin
-            utilisateur: profil, preferences, recherche, emails et brouillons. La
-            documentation technique reste disponible dans le README, mais l accueil
-            reste centre sur l usage.
+            Une fois connecté, l’application te guide dans le même ordre que le besoin
+            utilisateur: profil, préférences, recherche, emails et brouillons. La
+            documentation technique reste disponible dans le README, mais l’accueil
+            reste centré sur l’usage.
           </p>
         </article>
       </section>

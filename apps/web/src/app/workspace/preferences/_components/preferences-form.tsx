@@ -279,7 +279,7 @@ export function PreferencesForm({ initialPayload, initialDomains }: Props) {
     };
 
     if (!response.ok) {
-      setFormError(result.error ?? "Impossible de sauvegarder les preferences");
+      setFormError(result.error ?? "Impossible de sauvegarder les préférences");
       setFieldErrors(result.fieldErrors ?? {});
       setIsSubmitting(false);
       return;
@@ -315,7 +315,7 @@ export function PreferencesForm({ initialPayload, initialDomains }: Props) {
     };
 
     if (!response.ok) {
-      setGenerationError(result.error ?? "Impossible de generer une base initiale");
+      setGenerationError(result.error ?? "Impossible de générer une base initiale");
       setIsGenerating(false);
       return;
     }
@@ -348,8 +348,8 @@ export function PreferencesForm({ initialPayload, initialDomains }: Props) {
               Utilisation
             </p>
             <p className="text-sm leading-7 text-foreground">
-              Modifie ici uniquement les parametres de recherche et l ordre des domaines.
-              Les contraintes de candidature sont gerees depuis le profil complet.
+              Modifie ici uniquement les paramètres de recherche et l’ordre des domaines.
+              Les contraintes de candidature sont gérées depuis le profil complet.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -360,11 +360,11 @@ export function PreferencesForm({ initialPayload, initialDomains }: Props) {
                   : "rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-900"
               }
             >
-              {hasUnsavedChanges ? "Modifications non sauvegardees" : "Preferences a jour"}
+              {hasUnsavedChanges ? "Modifications non sauvegardées" : "Préférences à jour"}
             </span>
             {savedAt ? (
               <span className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-900">
-                Sauvegarde {savedAt}
+                Sauvegardé {savedAt}
               </span>
             ) : null}
           </div>
@@ -374,7 +374,7 @@ export function PreferencesForm({ initialPayload, initialDomains }: Props) {
             role="alert"
             className="rounded-[1.25rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
           >
-            {fieldErrorCount} erreur{fieldErrorCount > 1 ? "s" : ""} de validation a
+            {fieldErrorCount} erreur{fieldErrorCount > 1 ? "s" : ""} de validation à
             corriger avant de sauvegarder.
           </div>
         ) : null}
@@ -394,15 +394,14 @@ export function PreferencesForm({ initialPayload, initialDomains }: Props) {
             Base initiale
           </p>
           <p className="text-sm leading-7 text-foreground">
-            Genere une premiere base de domaines, cibles, localisations et mots cles a
-            partir du profil deja sauvegarde. Rien n est applique tant que tu n
-            enregistres pas.
+            Génère une première base de domaines, cibles, localisations et mots clés à
+            partir du profil déjà sauvegardé. Rien n’est appliqué tant que tu n’enregistres pas.
           </p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-sm leading-7 text-muted">
             {generationSummary
-              ? `${generationSummary}${generationProvider ? ` Genere avec ${generationProvider}.` : ""}`
+              ? `${generationSummary}${generationProvider ? ` Généré avec ${generationProvider}.` : ""}`
               : null}
           </div>
           <button
@@ -411,7 +410,7 @@ export function PreferencesForm({ initialPayload, initialDomains }: Props) {
             disabled={isGenerating || isSubmitting}
             className="inline-flex items-center justify-center rounded-full border border-line px-5 py-3 text-sm font-medium text-foreground transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isGenerating ? "Generation..." : "Generer une base initiale"}
+            {isGenerating ? "Generation..." : "Générer une base initiale"}
           </button>
         </div>
         {generationError ? (
@@ -428,9 +427,9 @@ export function PreferencesForm({ initialPayload, initialDomains }: Props) {
               Domaines
             </p>
             <p className="text-sm leading-7 text-foreground">
-              Glisse les cartes pour reordonner, ajuste le titre du domaine et decris
-              en une phrase le type de poste vise. Seuls les domaines retenus seront
-              persistes.
+              Glisse les cartes pour réordonner, ajuste le titre du domaine et décris
+              en une phrase le type de poste visé. Seuls les domaines retenus seront
+              persistés.
             </p>
           </div>
           <button
@@ -454,7 +453,7 @@ export function PreferencesForm({ initialPayload, initialDomains }: Props) {
 
         {domains.length === 0 ? (
           <div className="rounded-[1.25rem] border border-dashed border-line bg-slate-50 px-4 py-4 text-sm leading-7 text-muted">
-            Aucun domaine n est encore liste. Genere une base initiale avec Gemini ou
+            Aucun domaine n’est encore listé. Génère une base initiale avec Gemini ou
             ajoute une carte manuelle.
           </div>
         ) : (
@@ -500,7 +499,7 @@ export function PreferencesForm({ initialPayload, initialDomains }: Props) {
                           : "rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900"
                       }
                     >
-                      {domain.isValidated ? "Retenu" : "A valider"}
+                      {domain.isValidated ? "Retenu" : "À valider"}
                     </span>
                     <span className="rounded-full border border-line bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
                       Carte {index + 1}
@@ -550,7 +549,7 @@ export function PreferencesForm({ initialPayload, initialDomains }: Props) {
                         updateDomain(domain.id, "label", event.target.value)
                       }
                       className="w-full rounded-2xl border border-line bg-white/80 px-4 py-3 outline-none transition focus:border-slate-900"
-                      placeholder="Outils developpeur"
+                      placeholder="Outils développeur"
                     />
                   </label>
                   <label className="flex items-center gap-3 rounded-[1.25rem] border border-line bg-slate-50 px-4 py-3">
@@ -579,7 +578,7 @@ export function PreferencesForm({ initialPayload, initialDomains }: Props) {
                     }
                     rows={3}
                     className="w-full rounded-[1.25rem] border border-line bg-white/80 px-4 py-3 outline-none transition focus:border-slate-900"
-                    placeholder="Ex: stages backend orientes APIs, outils internes et automatisation."
+                    placeholder="Ex: stages backend orientés APIs, outils internes et automatisation."
                   />
                 </label>
               </article>
@@ -590,11 +589,11 @@ export function PreferencesForm({ initialPayload, initialDomains }: Props) {
 
       <section className="rounded-[1.5rem] border border-line bg-slate-50 p-5">
         <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-          Contraintes gerees ailleurs
+          Contraintes gérées ailleurs
         </p>
         <p className="mt-3 text-sm leading-7 text-foreground">
-          Disponibilites, remuneration, visa, liens et notes de candidature restent
-          modifies depuis le profil complet pour eviter les doublons d edition.
+          Disponibilités, rémunération, visa, liens et notes de candidature restent
+          modifiés depuis le profil complet pour éviter les doublons d’édition.
         </p>
         <div className="mt-4">
           <Link
@@ -609,8 +608,8 @@ export function PreferencesForm({ initialPayload, initialDomains }: Props) {
       <div className="flex flex-col gap-4 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between">
         <div aria-live="polite" className="text-sm leading-7 text-muted">
           {savedAt
-            ? `Preferences sauvegardees a ${savedAt}.`
-            : "Cette page ajuste les parametres de recherche et les domaines sans modifier les contraintes globales."}
+            ? `Préférences sauvegardées à ${savedAt}.`
+            : "Cette page ajuste les paramètres de recherche et les domaines sans modifier les contraintes globales."}
         </div>
         <div className="flex flex-col items-start gap-3 sm:items-end">
           <FieldErrorList messages={fieldErrors.domainSelections} />
@@ -619,7 +618,7 @@ export function PreferencesForm({ initialPayload, initialDomains }: Props) {
             disabled={isSubmitting || isGenerating}
             className="inline-flex items-center justify-center rounded-full bg-foreground px-5 py-3 text-sm font-medium text-white transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSubmitting ? "Enregistrement..." : "Sauvegarder les preferences"}
+            {isSubmitting ? "Enregistrement..." : "Sauvegarder les préférences"}
           </button>
         </div>
       </div>

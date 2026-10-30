@@ -38,7 +38,7 @@ export function OfferDraftGenerator({ jobOfferId }: Props) {
     const payload = (await response.json()) as DraftResponse;
 
     if (!response.ok) {
-      setError(payload.error ?? "Impossible de generer le brouillon");
+      setError(payload.error ?? "Impossible de générer le brouillon");
       setIsLoading(false);
       return;
     }
@@ -53,8 +53,8 @@ export function OfferDraftGenerator({ jobOfferId }: Props) {
         <div>
           <p className="text-sm font-medium text-foreground">Brouillon de candidature</p>
           <p className="mt-1 text-sm leading-7 text-muted">
-            Genere un premier email contextualise a partir de cette offre et du profil
-            sauvegarde.
+            Génère un premier email contextualisé à partir de cette offre et du profil
+            sauvegardé.
           </p>
         </div>
         <button
@@ -63,7 +63,7 @@ export function OfferDraftGenerator({ jobOfferId }: Props) {
           disabled={isLoading}
           className="inline-flex items-center justify-center rounded-full bg-foreground px-4 py-2 text-sm font-medium text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isLoading ? "Generation..." : "Generer un brouillon"}
+          {isLoading ? "Generation..." : "Générer un brouillon"}
         </button>
       </div>
 

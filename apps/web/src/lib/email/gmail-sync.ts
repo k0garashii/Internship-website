@@ -481,6 +481,6 @@ export async function syncGmailMailbox(userId: string): Promise<GmailSyncResult>
       throw error;
     }
 
-    throw new GmailMailboxError("La synchronisation Gmail a echoue", 500);
+    throw new GmailMailboxError("La synchronisation Gmail a échoué", 500);
   }
 }

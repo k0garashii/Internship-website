@@ -31,7 +31,7 @@ export function SignOutButton() {
       disabled={isSubmitting}
       className="inline-flex items-center rounded-full bg-foreground px-5 py-3 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60"
     >
-      {isSubmitting ? "Deconnexion..." : "Me deconnecter"}
+      {isSubmitting ? "Deconnexion..." : "Me déconnecter"}
     </button>
   );
 }

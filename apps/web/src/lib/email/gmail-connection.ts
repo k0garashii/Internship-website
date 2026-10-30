@@ -222,7 +222,7 @@ export async function upsertGmailConnectionFromGoogleOauth(options: {
 
     if (conflictingAccount && conflictingAccount.userId !== options.userId) {
       throw new GmailMailboxError(
-        "Ce compte Google est deja associe a un autre utilisateur",
+        "Ce compte Google est déjà associé à un autre utilisateur",
         409,
       );
     }
@@ -302,7 +302,7 @@ export async function upsertGmailConnectionFromGoogleOauth(options: {
       update: {
         authAccountId,
         workspaceId,
-        label: "Boite Gmail",
+        label: "Boîte Gmail",
         status: EmailIngestionConnectionStatus.ACTIVE,
         mailboxAddress: options.userInfo.email,
         syncQuery: DEFAULT_GMAIL_SYNC_QUERY,
@@ -313,7 +313,7 @@ export async function upsertGmailConnectionFromGoogleOauth(options: {
         workspaceId,
         authAccountId,
         sourceType: EmailIngestionSourceType.GMAIL,
-        label: "Boite Gmail",
+        label: "Boîte Gmail",
         status: EmailIngestionConnectionStatus.ACTIVE,
         mailboxAddress: options.userInfo.email,
         syncQuery: DEFAULT_GMAIL_SYNC_QUERY,
@@ -526,11 +526,11 @@ export async function ensureGmailConnectionAccess(options: {
   });
 
   if (!connection || !connection.authAccount) {
-    throw new GmailMailboxError("Gmail n est pas connecte pour cet utilisateur", 412);
+    throw new GmailMailboxError("Gmail n’est pas connecté pour cet utilisateur", 412);
   }
 
   if (connection.status === EmailIngestionConnectionStatus.DISABLED) {
-    throw new GmailMailboxError("La connexion Gmail est desactivee", 412);
+    throw new GmailMailboxError("La connexion Gmail est désactivée", 412);
   }
 
   if (!hasGoogleScopes(connection.authAccount.scope, options.requiredScopes)) {
@@ -553,7 +553,7 @@ export async function ensureGmailConnectionAccess(options: {
   }
 
   if (!storedRefreshToken) {
-    throw new GmailMailboxError("La connexion Gmail doit etre reautorisée", 412);
+    throw new GmailMailboxError("La connexion Gmail doit être reautorisée", 412);
   }
 
   const refreshed = await refreshGoogleTokens(storedRefreshToken);
@@ -595,7 +595,7 @@ export async function updateGmailSyncSettings(userId: string, input: { syncQuery
   });
 
   if (!connection) {
-    throw new GmailMailboxError("Gmail n est pas encore connecte", 404);
+    throw new GmailMailboxError("Gmail n’est pas encore connecté", 404);
   }
 
   await db.emailIngestionConnection.update({

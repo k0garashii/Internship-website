@@ -202,7 +202,7 @@ function createDiscoveryOffer(
     matching: {
       score: 18,
       label: "Exploratoire",
-      summary: "Match non calcule.",
+      summary: "Match non calculé.",
       breakdown: [],
     },
   };
@@ -250,7 +250,7 @@ function createLinkedInDiscoveryOffer(
     matching: {
       score: 18,
       label: "Exploratoire",
-      summary: "Match non calcule.",
+      summary: "Match non calculé.",
       breakdown: [],
     },
   };
@@ -315,7 +315,7 @@ function createCompanyCareerDiscoveryOffer(
     matching: {
       score: 18,
       label: "Exploratoire",
-      summary: "Match non calcule.",
+      summary: "Match non calculé.",
       breakdown: [],
     },
   };
@@ -514,7 +514,7 @@ export async function discoverInitialOffers(
     const query = selectedQueries[index];
 
     if (result.status === "rejected") {
-      warnings.push(`La requete "${query.label}" a echoue sur Welcome to the Jungle.`);
+      warnings.push(`La requête "${query.label}" a échoué sur Welcome to the Jungle.`);
       return;
     }
 
@@ -545,7 +545,7 @@ export async function discoverInitialOffers(
     const query = selectedQueries[index];
 
     if (result.status === "rejected") {
-      warnings.push(`La requete "${query.label}" a echoue sur LinkedIn Jobs.`);
+      warnings.push(`La requête "${query.label}" a échoué sur LinkedIn Jobs.`);
       return;
     }
 
@@ -576,7 +576,7 @@ export async function discoverInitialOffers(
     const query = selectedQueries[index];
 
     if (result.status === "rejected") {
-      warnings.push(`La recherche web approfondie a echoue pour "${query.label}".`);
+      warnings.push(`La recherche web approfondie a échoué pour "${query.label}".`);
       return;
     }
 
@@ -619,7 +619,7 @@ export async function discoverInitialOffers(
 
       if (settled.status === "rejected") {
         warnings.push(
-          `La lecture directe des offres a echoue pour ${source.companyName}.`,
+          `La lecture directe des offres a échoué pour ${source.companyName}.`,
         );
         return;
       }
@@ -636,7 +636,7 @@ export async function discoverInitialOffers(
         provider:
           source.atsProvider?.toLowerCase().replace(/[^a-z0-9]+/g, "-") ??
           "company-careers",
-        providerLabel: source.atsProvider ?? "Pages carrieres",
+        providerLabel: source.atsProvider ?? "Pages carrières",
         language: "multi",
         filters: [
           `company:${source.companyName}`,
@@ -657,7 +657,7 @@ export async function discoverInitialOffers(
       });
     });
   } catch (error) {
-    warnings.push("La collecte directe depuis des pages carrieres n a pas pu etre completee.");
+    warnings.push("La collecte directe depuis des pages carrières n’a pas pu être complétée.");
   }
 
   if (executions.length === 0) {
@@ -691,7 +691,7 @@ export async function discoverInitialOffers(
 
   return {
     generatedAt,
-    summary: `Recherche initiale executee sur ${executions.length} requete(s) publiques multi-sources pour ${rankedOffers.length} offre(s) dedupliquee(s), puis classee(s) par match et priorite utilisateur.`,
+    summary: `Recherche initiale exécutée sur ${executions.length} requête(s) publiques multi-sources pour ${rankedOffers.length} offre(s) dédupliquée(s), puis classée(s) par match et priorité utilisateur.`,
     planSummary: plan.summary,
     queryCount: plan.queries.length,
     executedQueryCount: executions.length,

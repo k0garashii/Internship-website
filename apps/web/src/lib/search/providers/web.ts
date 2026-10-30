@@ -41,7 +41,7 @@ const SEARCH_ATTEMPTS: WebSearchAttemptDefinition[] = [
   },
   {
     id: "careers",
-    label: "Recherche sites carrieres / ATS",
+    label: "Recherche sites carrières / ATS",
     buildQuery: (query) =>
       [query.targetRole, query.domain, query.location, "careers", "jobs", "recrutement"]
         .filter(Boolean)
@@ -276,7 +276,7 @@ function createOfferFromWebResult(
     matching: {
       score: 18,
       label: "Exploratoire",
-      summary: "Match non calcule.",
+      summary: "Match non calculé.",
       breakdown: [],
     },
   };
@@ -316,7 +316,7 @@ export async function searchWebOffersForQuery(
     const attempt = SEARCH_ATTEMPTS[index];
 
     if (settled.status === "rejected") {
-      warnings.push(`La recherche web "${attempt.label}" a echoue pour "${query.label}".`);
+      warnings.push(`La recherche web "${attempt.label}" a échoué pour "${query.label}".`);
       return;
     }
 

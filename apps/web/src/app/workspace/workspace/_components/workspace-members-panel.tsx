@@ -83,11 +83,11 @@ export function WorkspaceMembersPanel({ viewerUserId, viewerRole, members }: Pro
         Membres
       </p>
       <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
-        Membres actuellement rattaches
+        Membres actuellement rattachés
       </h2>
       <p className="mt-3 text-sm leading-7 text-muted">
-        Les roles peuvent maintenant etre ajustes depuis cet ecran pour preparer la
-        vraie gestion d equipe.
+        Les rôles peuvent maintenant être ajustés depuis cet écran pour préparer la
+        vraie gestion d’équipe.
       </p>
 
       <div className="mt-5 space-y-3">
@@ -106,7 +106,7 @@ export function WorkspaceMembersPanel({ viewerUserId, viewerRole, members }: Pro
                 </p>
                 {member.isDefault ? (
                   <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-700">
-                    Defaut
+                    Défaut
                   </span>
                 ) : null}
               </div>
@@ -114,7 +114,7 @@ export function WorkspaceMembersPanel({ viewerUserId, viewerRole, members }: Pro
 
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <span className="text-xs uppercase tracking-[0.16em] text-muted">
-                  Role
+                  Rôle
                 </span>
                 {isEditable ? (
                   <select

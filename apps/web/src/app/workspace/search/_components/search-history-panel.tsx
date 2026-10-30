@@ -48,7 +48,7 @@ export function SearchHistoryPanel({ result }: Props) {
             Historique
           </p>
           <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-            Recherches deja lancees sur ce compte.
+            Recherches déjà lancées sur ce compte.
           </h2>
           <p className="max-w-3xl text-sm leading-7 text-foreground">{result.summary}</p>
         </div>
@@ -86,7 +86,7 @@ export function SearchHistoryPanel({ result }: Props) {
                     </h3>
                     {createdAt ? (
                       <p className="mt-2 text-sm text-muted">
-                        Creee le {createdAt}
+                        Créée le {createdAt}
                       </p>
                     ) : null}
                   </div>
@@ -95,7 +95,7 @@ export function SearchHistoryPanel({ result }: Props) {
                 <div className="grid gap-3 sm:grid-cols-2">
                   {startedAt ? (
                     <div className="rounded-[1.25rem] border border-line bg-card p-4">
-                      <p className="text-xs uppercase tracking-[0.16em] text-muted">Debut</p>
+                      <p className="text-xs uppercase tracking-[0.16em] text-muted">Début</p>
                       <p className="mt-2 text-sm font-medium text-foreground">
                         {startedAt}
                       </p>
@@ -155,7 +155,7 @@ export function SearchHistoryPanel({ result }: Props) {
                   </div>
                 ) : (
                   <p className="mt-2 text-sm leading-7 text-muted">
-                    Aucun top resultat detaille n est encore disponible pour ce run.
+                    Aucun top résultat détaillé n’est encore disponible pour ce run.
                   </p>
                 )}
               </div>
@@ -165,7 +165,7 @@ export function SearchHistoryPanel({ result }: Props) {
         </div>
       ) : (
         <article className="mt-6 rounded-[1.5rem] border border-dashed border-line bg-white/70 p-6 text-sm leading-7 text-muted">
-          Lance une premiere recherche pour commencer a remplir l historique.
+          Lance une première recherche pour commencer à remplir l’historique.
         </article>
       )}
     </section>

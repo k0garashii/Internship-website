@@ -23,12 +23,12 @@ const lifecycleLabels: Record<string, string> = {
 
 const feedbackLabels: Record<string, string> = {
   NOT_RELEVANT: "Non pertinente",
-  MAYBE: "A revoir",
+  MAYBE: "À revoir",
   FAVORITE: "Favorite",
-  APPLIED: "Candidature envoyee",
+  APPLIED: "Candidature envoyée",
   INTERVIEWING: "Entretien",
   REJECTED: "Refusee",
-  OFFER_ACCEPTED: "Offre acceptee",
+  OFFER_ACCEPTED: "Offre acceptée",
 };
 
 const searchRunLabels: Record<string, string> = {
@@ -86,10 +86,10 @@ export function PersistedOffersPanel({ result }: Props) {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-3">
           <p className="app-kicker">
-            Offres enregistrees
+            Offres enregistrées
           </p>
           <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-            Offres deja stockees avec leur etat courant.
+            Offres déjà stockées avec leur état courant.
           </h2>
           <p className="max-w-3xl text-sm leading-7 text-foreground">{result.summary}</p>
         </div>
@@ -107,7 +107,7 @@ export function PersistedOffersPanel({ result }: Props) {
             </p>
           </div>
           <div className="surface-muted rounded-[1.25rem] p-4">
-            <p className="text-xs uppercase tracking-[0.16em] text-muted">Candidatees</p>
+            <p className="text-xs uppercase tracking-[0.16em] text-muted">Candidatées</p>
             <p className="mt-2 text-2xl font-semibold text-foreground">
               {result.statusCounts.APPLIED ?? 0}
             </p>
@@ -188,7 +188,7 @@ export function PersistedOffersPanel({ result }: Props) {
                 <div className="flex flex-col items-start gap-3 lg:items-end">
                   {lastSeenAt ? (
                     <span className="text-sm text-muted">
-                      Derniere vue le {lastSeenAt}
+                      Dernière vue le {lastSeenAt}
                     </span>
                   ) : null}
                   <Link
@@ -213,7 +213,7 @@ export function PersistedOffersPanel({ result }: Props) {
                     }}
                     className="inline-flex items-center justify-center rounded-full border border-line px-5 py-3 text-sm font-medium text-foreground transition hover:-translate-y-0.5"
                   >
-                    Voir le detail
+                    Voir le détail
                   </Link>
                   <a
                     href={offer.sourceUrl}
@@ -239,7 +239,7 @@ export function PersistedOffersPanel({ result }: Props) {
                     }}
                     className="inline-flex items-center justify-center rounded-full bg-foreground px-5 py-3 text-sm font-medium text-white transition hover:-translate-y-0.5"
                   >
-                    Ouvrir l offre
+                    Ouvrir l’offre
                   </a>
                   <DeletePersistedOfferButton
                     offerId={offer.id}
@@ -269,7 +269,7 @@ export function PersistedOffersPanel({ result }: Props) {
                 {hasLatestSearch ? (
                   <div className="rounded-[1.25rem] border border-line bg-card p-4">
                     <p className="text-xs uppercase tracking-[0.16em] text-muted">
-                      Derniere recherche
+                      Dernière recherche
                     </p>
                     {offer.latestSearchLabel ? (
                       <p className="mt-2 text-sm font-medium text-foreground">
@@ -285,7 +285,7 @@ export function PersistedOffersPanel({ result }: Props) {
                 ) : null}
                 {postedAt ? (
                   <div className="rounded-[1.25rem] border border-line bg-card p-4">
-                    <p className="text-xs uppercase tracking-[0.16em] text-muted">Publiee</p>
+                    <p className="text-xs uppercase tracking-[0.16em] text-muted">Publiée</p>
                     <p className="mt-2 text-sm font-medium text-foreground">
                       {postedAt}
                     </p>
@@ -294,7 +294,7 @@ export function PersistedOffersPanel({ result }: Props) {
                 {firstSeenAt ? (
                   <div className="rounded-[1.25rem] border border-line bg-card p-4">
                     <p className="text-xs uppercase tracking-[0.16em] text-muted">
-                      Premiere apparition
+                      Première apparition
                     </p>
                     <p className="mt-2 text-sm font-medium text-foreground">
                       {firstSeenAt}
@@ -340,7 +340,7 @@ export function PersistedOffersPanel({ result }: Props) {
         </div>
       ) : (
         <article className="mt-6 rounded-[1.5rem] border border-dashed border-line bg-white/70 p-6 text-sm leading-7 text-muted">
-          Lance une collecte pour commencer a remplir la base d offres et suivre leur
+          Lance une collecte pour commencer à remplir la base d’offres et suivre leur
           statut ici.
         </article>
       )}

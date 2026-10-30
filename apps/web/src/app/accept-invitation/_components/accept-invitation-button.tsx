@@ -45,7 +45,7 @@ export function AcceptInvitationButton({ token }: { token: string }) {
         }}
         className="rounded-full bg-foreground px-5 py-3 text-sm font-medium text-white transition hover:-translate-y-0.5 disabled:opacity-60"
       >
-        {isPending ? "Acceptation..." : "Accepter l invitation"}
+        {isPending ? "Acceptation..." : "Accepter l’invitation"}
       </button>
       {error ? (
         <p role="alert" className="text-sm text-rose-700">
