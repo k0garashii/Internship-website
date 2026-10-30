@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 
 import { getCurrentViewer } from "@/lib/auth/session";
@@ -10,7 +11,7 @@ export default async function ProfileManagementPage() {
   const viewer = await getCurrentViewer();
 
   if (!viewer) {
-    return null;
+    redirect("/sign-in");
   }
 
   const account = await getProfileFormData(viewer.userId);

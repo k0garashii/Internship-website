@@ -8,7 +8,9 @@ import {
   encodeGmailOauthStatePayload,
 } from "@/lib/email/gmail-oauth-state";
 import { getRequestBaseUrl } from "@/lib/http/request-origin";
+import { resolveSafeRedirectPath } from "@/lib/http/safe-redirect";
 import { logRouteError, logRouteEvent } from "@/lib/observability/error-logging";
+import { MissingAppSecretError } from "@/lib/security/secrets";
 
 const connectQuerySchema = z.object({
   scopeSet: z.enum(["mailbox", "mailbox_send"]).default("mailbox"),
@@ -42,10 +44,10 @@ export async function GET(request: Request) {
   );
 
   const scopeSet: GmailScopeSet = parsed.success ? parsed.data.scopeSet : "mailbox";
-  const redirectTo =
-    parsed.success && parsed.data.redirectTo?.startsWith("/")
-      ? parsed.data.redirectTo
-      : "/workspace/email";
+  const redirectTo = resolveSafeRedirectPath(
+    parsed.success ? parsed.data.redirectTo : null,
+    "/workspace/email",
+  );
   const redirectUri = new URL("/api/email/google/callback", baseUrl).toString();
 
   try {
@@ -80,7 +82,7 @@ export async function GET(request: Request) {
 
     return response;
   } catch (error) {
-    if (error instanceof GoogleIntegrationError) {
+    if (error instanceof GoogleIntegrationError || error instanceof MissingAppSecretError) {
       const fallbackUrl = new URL(redirectTo, baseUrl);
       fallbackUrl.searchParams.set("gmail", "oauth-missing-config");
       return NextResponse.redirect(fallbackUrl);

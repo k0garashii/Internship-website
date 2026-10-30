@@ -6,11 +6,11 @@ import {
 } from "node:child_process";
 import { createServer } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
-import test, { after } from "node:test";
+import test, { after, type TestContext } from "node:test";
 
 let port = 3031;
 let baseUrl = `http://127.0.0.1:${port}`;
-const NPM_CMD = "C:\\nvm4w\\nodejs\\npm.cmd";
+const IS_WINDOWS = process.platform === "win32";
 const SESSION_COOKIE_NAME = "internship_scrapper_session";
 
 let serverProcess: ChildProcessWithoutNullStreams | null = null;
@@ -112,14 +112,12 @@ async function requestJson(
   };
 }
 
-test("full user flow covers auth, onboarding, search, feedback and draft generation", async (t) => {
+test("full user flow covers auth, onboarding, search, feedback and draft generation", { timeout: 240_000 }, async (t: TestContext) => {
   port = await reserveOpenPort();
   baseUrl = `http://127.0.0.1:${port}`;
   serverProcess = spawn(
-    "cmd.exe",
+    IS_WINDOWS ? "npm.cmd" : "npm",
     [
-      "/c",
-      NPM_CMD,
       "run",
       "start",
       "--",
@@ -130,10 +128,9 @@ test("full user flow covers auth, onboarding, search, feedback and draft generat
     ],
     {
       cwd: process.cwd(),
-      env: {
-        ...process.env,
-        PATH: `C:\\nvm4w\\nodejs;${process.env.PATH ?? ""}`,
-      },
+      env: process.env,
+      shell: IS_WINDOWS,
+      detached: !IS_WINDOWS,
       stdio: "pipe",
     },
   );
@@ -162,8 +159,9 @@ test("full user flow covers auth, onboarding, search, feedback and draft generat
     });
 
     assert.equal(register.response.status, 201);
-    const sessionCookie = extractSessionCookie(register.response);
-    assert.ok(sessionCookie);
+    const sessionCookie =
+      extractSessionCookie(register.response) ??
+      assert.fail("Expected a session cookie");
 
     const workspacePage = await fetch(`${baseUrl}/workspace`, {
       headers: {
@@ -215,8 +213,9 @@ test("full user flow covers auth, onboarding, search, feedback and draft generat
     });
 
     assert.equal(invitedRegister.response.status, 201);
-    const invitedCookie = extractSessionCookie(invitedRegister.response);
-    assert.ok(invitedCookie);
+    const invitedCookie =
+      extractSessionCookie(invitedRegister.response) ??
+      assert.fail("Expected a session cookie");
 
     const invitationAcceptance = await requestJson("/api/workspace/invitations/accept", {
       method: "POST",
@@ -335,7 +334,7 @@ test("full user flow covers auth, onboarding, search, feedback and draft generat
     assert.equal(drafts.response.status, 200);
     assert.ok((drafts.payload.drafts as Array<unknown>).length >= 1);
   });
-}, { timeout: 240_000 });
+});
 
 after(async () => {
   if (!serverProcess) {
@@ -343,9 +342,15 @@ after(async () => {
   }
 
   if (typeof serverProcess.pid === "number") {
-    spawnSync("taskkill", ["/PID", String(serverProcess.pid), "/T", "/F"], {
-      stdio: "ignore",
-    });
+    if (IS_WINDOWS) {
+      spawnSync("taskkill", ["/PID", String(serverProcess.pid), "/T", "/F"], {
+        stdio: "ignore",
+      });
+    } else {
+      try {
+        process.kill(-serverProcess.pid, "SIGTERM");
+      } catch {}
+    }
   }
 
   await delay(1000);

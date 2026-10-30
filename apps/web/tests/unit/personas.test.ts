@@ -24,9 +24,9 @@ test("persona onboarding payload exposes the search signals used by the app", ()
   const payload = buildPersonaOnboardingPayload(persona);
 
   assert.equal(payload.fullName, `${persona.firstName} ${persona.lastName}`);
-  assert.match(payload.skills, new RegExp(persona.hardSkills[0], "i"));
-  assert.match(payload.targetRoles, new RegExp(persona.targetRoles[0], "i"));
-  assert.match(payload.searchKeywords, new RegExp(persona.searchKeywords[0], "i"));
+  assert.match(payload.skills ?? "", new RegExp(persona.hardSkills[0], "i"));
+  assert.match(payload.targetRoles ?? "", new RegExp(persona.targetRoles[0], "i"));
+  assert.match(payload.searchKeywords ?? "", new RegExp(persona.searchKeywords[0], "i"));
   assert.equal(payload.domainSelections.length, persona.preferredDomains.length);
 });
 

@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { getCurrentViewer } from "@/lib/auth/session";
 import { listEmailDeliveryLogsForUser } from "@/lib/email/delivery-logs";
 import { getForwardingSourceSnapshot } from "@/lib/email/forwarding";
@@ -68,7 +69,7 @@ export default async function EmailWorkspacePage({
   const viewer = await getCurrentViewer();
 
   if (!viewer) {
-    return null;
+    redirect("/sign-in");
   }
 
   const [gmailSnapshot, forwardingSnapshot, deliveryLogs, resolvedSearchParams] = await Promise.all([

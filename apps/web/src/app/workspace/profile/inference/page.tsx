@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 
 import { getCurrentViewer } from "@/lib/auth/session";
@@ -149,7 +150,7 @@ export default async function InferenceProfilePage() {
   const viewer = await getCurrentViewer();
 
   if (!viewer) {
-    return null;
+    redirect("/sign-in");
   }
 
   const personalization = await getSearchPersonalizationSnapshot(

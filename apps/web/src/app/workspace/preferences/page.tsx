@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { getCurrentViewer } from "@/lib/auth/session";
 import {
   getProfileFormData,
@@ -9,7 +10,7 @@ export default async function PreferencesPage() {
   const viewer = await getCurrentViewer();
 
   if (!viewer) {
-    return null;
+    redirect("/sign-in");
   }
 
   const account = await getProfileFormData(viewer.userId);

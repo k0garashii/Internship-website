@@ -10,6 +10,7 @@ import {
 import { syncGmailMailbox } from "@/lib/email/gmail-sync";
 import { upsertGmailConnectionFromGoogleOauth } from "@/lib/email/gmail-connection";
 import { getRequestBaseUrl } from "@/lib/http/request-origin";
+import { resolveSafeRedirectPath } from "@/lib/http/safe-redirect";
 import { logRouteError, logRouteEvent } from "@/lib/observability/error-logging";
 
 const callbackQuerySchema = z.object({
@@ -30,8 +31,10 @@ function clearStateCookie() {
 }
 
 function buildRedirectUrl(baseUrl: string, statePayload: GmailOauthStatePayload | null) {
-  const target = statePayload?.redirectTo?.startsWith("/") ? statePayload.redirectTo : "/workspace/email";
-  return new URL(target, baseUrl);
+  return new URL(
+    resolveSafeRedirectPath(statePayload?.redirectTo, "/workspace/email"),
+    baseUrl,
+  );
 }
 
 export const runtime = "nodejs";
@@ -72,8 +75,18 @@ export async function GET(request: Request) {
     return response;
   }
 
+  // The Gmail account is only linked to the user who started the flow and is
+  // still signed in, never to an identity carried by the state cookie alone.
   const viewer = await getCurrentViewer();
-  const userId = viewer?.userId ?? statePayload.userId;
+
+  if (!viewer || viewer.userId !== statePayload.userId) {
+    redirectUrl.searchParams.set("gmail", "oauth-invalid-state");
+    const response = NextResponse.redirect(redirectUrl);
+    response.cookies.set(GOOGLE_OAUTH_STATE_COOKIE, "", clearStateCookie());
+    return response;
+  }
+
+  const userId = viewer.userId;
 
   try {
     const tokens = await exchangeGoogleCodeForTokens(

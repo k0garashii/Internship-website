@@ -98,6 +98,105 @@ async function buildUniqueWorkspaceSlugTx(
   return candidate;
 }
 
+const workspaceSelection = {
+  id: true,
+  slug: true,
+  name: true,
+  type: true,
+  personalOwnerUserId: true,
+} as const;
+
+function isOwnPersonalWorkspace(workspace: WorkspaceSelection, userId: string) {
+  return (
+    workspace.type === WorkspaceType.PERSONAL &&
+    (workspace.personalOwnerUserId === userId || workspace.personalOwnerUserId === null)
+  );
+}
+
+// The role always comes from the membership of the workspace being returned:
+// reusing the default (personal, OWNER) membership for another workspace would
+// grant owner rights in team workspaces the user only joined as a member.
+async function findWorkspaceMembershipTx(
+  tx: TxClient,
+  userId: string,
+  activeWorkspaceId: string | null,
+) {
+  if (activeWorkspaceId) {
+    const activeMembership = await tx.workspaceMember.findUnique({
+      where: {
+        workspaceId_userId: {
+          workspaceId: activeWorkspaceId,
+          userId,
+        },
+      },
+      select: {
+        role: true,
+        workspace: {
+          select: workspaceSelection,
+        },
+      },
+    });
+
+    if (activeMembership) {
+      return activeMembership;
+    }
+  }
+
+  return tx.workspaceMember.findFirst({
+    where: {
+      userId,
+    },
+    orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+    select: {
+      role: true,
+      workspace: {
+        select: workspaceSelection,
+      },
+    },
+  });
+}
+
+async function resolveExistingWorkspaceContextTx(
+  tx: TxClient,
+  userId: string,
+  activeWorkspaceId: string | null,
+): Promise<WorkspaceContext | null> {
+  const membership = await findWorkspaceMembershipTx(tx, userId, activeWorkspaceId);
+
+  if (!membership) {
+    return null;
+  }
+
+  await ensurePersonalWorkspaceOwnershipTx(tx, membership.workspace, userId);
+
+  if (membership.workspace.id !== activeWorkspaceId) {
+    await tx.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        activeWorkspaceId: membership.workspace.id,
+      },
+    });
+  }
+
+  // Legacy rows without workspace belong to the user's personal space, never
+  // to a team workspace that happens to be active.
+  if (isOwnPersonalWorkspace(membership.workspace, userId)) {
+    await backfillWorkspaceRelationsTx(tx, {
+      userId,
+      workspaceId: membership.workspace.id,
+    });
+  }
+
+  return {
+    workspaceId: membership.workspace.id,
+    slug: membership.workspace.slug,
+    name: membership.workspace.name,
+    role: membership.role,
+  };
+}
+
 async function getExistingWorkspaceContextTx(
   tx: TxClient,
   userId: string,
@@ -107,65 +206,15 @@ async function getExistingWorkspaceContextTx(
       id: userId,
     },
     select: {
-      activeWorkspace: {
-        select: {
-          id: true,
-          slug: true,
-          name: true,
-          type: true,
-          personalOwnerUserId: true,
-        },
-      },
-      workspaceMembers: {
-        orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
-        take: 1,
-        select: {
-          role: true,
-          workspace: {
-            select: {
-              id: true,
-              slug: true,
-              name: true,
-              type: true,
-              personalOwnerUserId: true,
-            },
-          },
-        },
-      },
+      activeWorkspaceId: true,
     },
   });
 
-  const activeWorkspace = user?.activeWorkspace ?? user?.workspaceMembers[0]?.workspace;
-  const role = user?.workspaceMembers[0]?.role ?? WorkspaceMemberRole.OWNER;
-
-  if (!activeWorkspace) {
+  if (!user) {
     return null;
   }
 
-  await ensurePersonalWorkspaceOwnershipTx(tx, activeWorkspace, userId);
-
-  await backfillWorkspaceRelationsTx(tx, {
-    userId,
-    workspaceId: activeWorkspace.id,
-  });
-
-  if (!user?.activeWorkspace) {
-    await tx.user.update({
-      where: {
-        id: userId,
-      },
-      data: {
-        activeWorkspaceId: activeWorkspace.id,
-      },
-    });
-  }
-
-  return {
-    workspaceId: activeWorkspace.id,
-    slug: activeWorkspace.slug,
-    name: activeWorkspace.name,
-    role,
-  };
+  return resolveExistingWorkspaceContextTx(tx, userId, user.activeWorkspaceId);
 }
 
 async function backfillWorkspaceRelationsTx(
@@ -259,31 +308,7 @@ export async function ensureUserWorkspaceTx(
       fullName: true,
       locale: true,
       timezone: true,
-      activeWorkspace: {
-        select: {
-          id: true,
-          slug: true,
-          name: true,
-          type: true,
-          personalOwnerUserId: true,
-        },
-      },
-      workspaceMembers: {
-        orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
-        take: 1,
-        select: {
-          role: true,
-          workspace: {
-            select: {
-              id: true,
-              slug: true,
-              name: true,
-              type: true,
-              personalOwnerUserId: true,
-            },
-          },
-        },
-      },
+      activeWorkspaceId: true,
     },
   });
 
@@ -291,46 +316,14 @@ export async function ensureUserWorkspaceTx(
     throw new Error("User not found while resolving workspace");
   }
 
-  if (user.activeWorkspace) {
-    await ensurePersonalWorkspaceOwnershipTx(tx, user.activeWorkspace, userId);
+  const existingContext = await resolveExistingWorkspaceContextTx(
+    tx,
+    userId,
+    user.activeWorkspaceId,
+  );
 
-    await backfillWorkspaceRelationsTx(tx, {
-      userId,
-      workspaceId: user.activeWorkspace.id,
-    });
-
-    return {
-      workspaceId: user.activeWorkspace.id,
-      slug: user.activeWorkspace.slug,
-      name: user.activeWorkspace.name,
-      role: user.workspaceMembers[0]?.role ?? WorkspaceMemberRole.OWNER,
-    };
-  }
-
-  const fallbackMembership = user.workspaceMembers[0];
-  if (fallbackMembership) {
-    await ensurePersonalWorkspaceOwnershipTx(tx, fallbackMembership.workspace, userId);
-
-    await tx.user.update({
-      where: {
-        id: userId,
-      },
-      data: {
-        activeWorkspaceId: fallbackMembership.workspace.id,
-      },
-    });
-
-    await backfillWorkspaceRelationsTx(tx, {
-      userId,
-      workspaceId: fallbackMembership.workspace.id,
-    });
-
-    return {
-      workspaceId: fallbackMembership.workspace.id,
-      slug: fallbackMembership.workspace.slug,
-      name: fallbackMembership.workspace.name,
-      role: fallbackMembership.role,
-    };
+  if (existingContext) {
+    return existingContext;
   }
 
   const slug = await buildUniqueWorkspaceSlugTx(tx, user);
@@ -417,6 +410,47 @@ export async function ensureUserWorkspaceTx(
     slug: workspace.slug,
     name: workspace.name,
     role: WorkspaceMemberRole.OWNER,
+  };
+}
+
+// Read-only path used on every authenticated request: two indexed lookups
+// instead of the provisioning transaction, which only runs when this misses.
+export async function findActiveWorkspaceContext(
+  userId: string,
+  activeWorkspaceId: string | null,
+): Promise<WorkspaceContext | null> {
+  if (!activeWorkspaceId) {
+    return null;
+  }
+
+  const membership = await db.workspaceMember.findUnique({
+    where: {
+      workspaceId_userId: {
+        workspaceId: activeWorkspaceId,
+        userId,
+      },
+    },
+    select: {
+      role: true,
+      workspace: {
+        select: workspaceSelection,
+      },
+    },
+  });
+
+  if (
+    !membership ||
+    (membership.workspace.type === WorkspaceType.PERSONAL &&
+      membership.workspace.personalOwnerUserId !== userId)
+  ) {
+    return null;
+  }
+
+  return {
+    workspaceId: membership.workspace.id,
+    slug: membership.workspace.slug,
+    name: membership.workspace.name,
+    role: membership.role,
   };
 }
 

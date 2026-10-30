@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { getCurrentViewer } from "@/lib/auth/session";
 import { getWorkspaceControlCenter } from "@/server/facades/workspace-facade";
 
@@ -10,7 +11,7 @@ export default async function WorkspaceControlPage() {
   const viewer = await getCurrentViewer();
 
   if (!viewer) {
-    return null;
+    redirect("/sign-in");
   }
 
   const snapshot = await getWorkspaceControlCenter(viewer);

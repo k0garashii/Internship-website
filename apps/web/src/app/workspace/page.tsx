@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 
 import { getCurrentViewer } from "@/lib/auth/session";
@@ -51,7 +52,7 @@ export default async function WorkspacePage({
   const viewer = await getCurrentViewer();
 
   if (!viewer) {
-    return null;
+    redirect("/sign-in");
   }
 
   const [account, gmailSnapshot, resolvedSearchParams] = await Promise.all([

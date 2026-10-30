@@ -6,13 +6,38 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   web-checks:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     defaults:
       run:
         working-directory: apps/web
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/postgres?schema=public
+      NEXT_TELEMETRY_DISABLED: "1"
 
     steps:
       - name: Checkout
@@ -30,18 +55,23 @@ jobs:
 
       - name: Validate Prisma schema
         run: npm run db:validate
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres?schema=public
-          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/postgres?schema=public
+
+      - name: Check migrations match the Prisma schema
+        run: |
+          npx prisma migrate deploy
+          npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
 
       - name: Lint
         run: npm run lint
 
-      - name: Test
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
         run: npm run test
 
       - name: Build
         run: npm run build
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres?schema=public
-          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/postgres?schema=public
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=critical

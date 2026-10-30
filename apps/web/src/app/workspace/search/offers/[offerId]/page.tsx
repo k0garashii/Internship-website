@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { getCurrentViewer } from "@/lib/auth/session";
 import { logServiceError } from "@/lib/observability/error-logging";
@@ -111,7 +111,7 @@ export default async function OfferDetailPage({ params }: PageProps) {
   const viewer = await getCurrentViewer();
 
   if (!viewer) {
-    return null;
+    redirect("/sign-in");
   }
 
   const { offerId } = await params;

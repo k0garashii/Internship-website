@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getCurrentViewer } from "@/lib/auth/session";
+import { resolveSafeRedirectPath } from "@/lib/http/safe-redirect";
 
 import { SignInForm } from "./_components/sign-in-form";
 
@@ -17,7 +18,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   const redirectTo = resolvedSearchParams?.redirectTo;
 
   if (viewer) {
-    redirect(redirectTo?.startsWith("/") ? redirectTo : "/workspace");
+    redirect(resolveSafeRedirectPath(redirectTo, "/workspace"));
   }
 
   return (

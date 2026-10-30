@@ -3,6 +3,8 @@ import { randomBytes } from "node:crypto";
 import { z } from "zod";
 
 import type { GmailScopeSet } from "@/lib/email/google";
+import { resolveSafeRedirectPath } from "@/lib/http/safe-redirect";
+import { signValue, verifySignedValue } from "@/lib/security/secrets";
 
 const gmailOauthStatePayloadSchema = z.object({
   nonce: z.string().trim().min(16),
@@ -24,23 +26,28 @@ export function createGmailOauthStatePayload(input: {
     nonce: randomBytes(16).toString("hex"),
     userId: input.userId,
     scopeSet: input.scopeSet,
-    redirectTo: input.redirectTo,
+    redirectTo: resolveSafeRedirectPath(input.redirectTo, "/workspace/email"),
     redirectUri: input.redirectUri,
   });
 }
 
 export function encodeGmailOauthStatePayload(payload: GmailOauthStatePayload) {
-  return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  return signValue(
+    Buffer.from(JSON.stringify(payload), "utf8").toString("base64url"),
+    "oauth-state",
+  );
 }
 
 export function decodeGmailOauthStatePayload(value: string | null | undefined) {
-  if (!value) {
+  const encodedPayload = verifySignedValue(value, "oauth-state");
+
+  if (!encodedPayload) {
     return null;
   }
 
   try {
     return gmailOauthStatePayloadSchema.parse(
-      JSON.parse(Buffer.from(value, "base64url").toString("utf8")),
+      JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8")),
     );
   } catch {
     return null;

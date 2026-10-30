@@ -17,6 +17,7 @@ export const GOOGLE_OAUTH_SCOPES = {
 
 const GOOGLE_AUTH_BASE_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
+const GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 const GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo";
 const GMAIL_API_BASE_URL = "https://gmail.googleapis.com/gmail/v1/users/me";
 
@@ -269,6 +270,21 @@ export async function refreshGoogleTokens(refreshToken: string) {
     message: "Google access token refreshed",
   });
   return payload;
+}
+
+export async function revokeGoogleToken(token: string) {
+  const response = await fetch(GOOGLE_REVOKE_URL, {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({ token }),
+  });
+
+  // 400 means the token is already invalid or revoked, which is the goal here.
+  if (!response.ok && response.status !== 400) {
+    throw new GoogleIntegrationError(await parseGoogleError(response), response.status);
+  }
 }
 
 export async function fetchGoogleUserInfo(accessToken: string) {
