@@ -137,7 +137,13 @@ export async function importResumeForUser(userId: string, file: File) {
 
   try {
     rawText = await parsePdfText(bytes);
-  } catch {
+  } catch (error) {
+    logServiceError({
+      level: "warn",
+      scope: "profile/resume-import",
+      message: "PDF text extraction failed",
+      error,
+    });
     throw new ResumeImportError("Impossible de lire ce PDF.", 422);
   }
 
