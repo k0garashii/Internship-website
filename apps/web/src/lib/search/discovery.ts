@@ -9,6 +9,7 @@ import { matchProfileToOffer } from "@/lib/search/matching";
 import { normalizeDiscoveryOffers } from "@/lib/search/normalization";
 import {
   buildLinkedInSearchContext,
+  isLinkedInDirectSourceEnabled,
   matchLinkedInQueryKeywords,
   searchLinkedInOffers,
 } from "@/lib/search/providers/linkedin";
@@ -493,9 +494,21 @@ export async function discoverInitialOffers(
   const warnings: string[] = [];
   const offerMap = new Map<string, SearchDiscoveryOffer>();
 
-  const settledWttjResults = await Promise.allSettled(
-    selectedQueries.map((query) => searchQueryWithFallback(query, wttjContext, hitsPerQuery)),
-  );
+  // Sources are independent, so they are queried concurrently; results are
+  // still merged in a fixed order (WTTJ, LinkedIn, web) to keep ranking stable.
+  const [settledWttjResults, settledLinkedInResults, settledWebResults] = await Promise.all([
+    Promise.allSettled(
+      selectedQueries.map((query) => searchQueryWithFallback(query, wttjContext, hitsPerQuery)),
+    ),
+    isLinkedInDirectSourceEnabled()
+      ? Promise.allSettled(
+          selectedQueries.map((query) => searchLinkedInOffers(query, linkedInContext)),
+        )
+      : Promise.resolve([]),
+    Promise.allSettled(
+      selectedQueries.map((query) => searchWebOffersForQuery(query, webContext)),
+    ),
+  ]);
 
   settledWttjResults.forEach((result, index) => {
     const query = selectedQueries[index];
@@ -528,10 +541,6 @@ export async function discoverInitialOffers(
     });
   });
 
-  const settledLinkedInResults = await Promise.allSettled(
-    selectedQueries.map((query) => searchLinkedInOffers(query, linkedInContext)),
-  );
-
   settledLinkedInResults.forEach((result, index) => {
     const query = selectedQueries[index];
 
@@ -562,10 +571,6 @@ export async function discoverInitialOffers(
       offerMap.set(incoming.id, mergeOffer(offerMap.get(incoming.id), incoming));
     });
   });
-
-  const settledWebResults = await Promise.allSettled(
-    selectedQueries.map((query) => searchWebOffersForQuery(query, webContext)),
-  );
 
   settledWebResults.forEach((result, index) => {
     const query = selectedQueries[index];

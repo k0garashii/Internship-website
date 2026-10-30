@@ -4,6 +4,8 @@ import type { PersonalProfileFile } from "@/lib/config/personal-profile";
 import type { SearchTargetsFile } from "@/lib/config/search-targets";
 import type { SearchQueryCandidate } from "@/lib/search/query-plan";
 
+const REQUEST_TIMEOUT_MS = 9000;
+
 const WTTJ_JOBS_PAGE_URL = "https://www.welcometothejungle.com/en/jobs";
 const WTTJ_SEARCH_CONFIG_TTL_MS = 1000 * 60 * 15;
 const DEFAULT_USER_AGENT =
@@ -141,6 +143,7 @@ async function fetchText(url: string) {
       "user-agent": DEFAULT_USER_AGENT,
       accept: "text/html,application/xhtml+xml",
     },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
 
   if (!response.ok) {
@@ -265,6 +268,7 @@ export async function searchWttjOffers(
   const indexName = `${config.jobsIndexPrefix}_${context.language}`;
   const response = await fetch(`https://${config.appId}-dsn.algolia.net/1/indexes/${indexName}/query`, {
     method: "POST",
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     headers: {
       "content-type": "application/json",
       accept: "application/json",

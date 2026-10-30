@@ -25,6 +25,8 @@ import { logServiceError } from "@/lib/observability/error-logging";
 import { buildSignalsFromOfferRecord, recordSearchBehaviorEvent } from "@/server/application/personalization/search-behavior-service";
 import { getRequiredActiveWorkspaceIdForUser } from "@/server/application/workspace/workspace-service";
 
+const GEMINI_REQUEST_TIMEOUT_MS = 30000;
+
 const generatedDraftSchema = z.object({
   subject: z.string().trim().min(6).max(160),
   body: z.string().trim().min(80).max(4000),
@@ -189,6 +191,7 @@ async function generateDraftWithGemini(prompt: OfferEmailPersonalizationPrompt, 
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
       method: "POST",
+      signal: AbortSignal.timeout(GEMINI_REQUEST_TIMEOUT_MS),
       headers: {
         "content-type": "application/json",
         "x-goog-api-key": apiKey,

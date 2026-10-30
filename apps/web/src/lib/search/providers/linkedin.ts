@@ -158,6 +158,13 @@ function collectDefaultLocation(
   );
 }
 
+// The guest jobs endpoint is not a public API and LinkedIn's terms forbid
+// automated access, so it stays opt-in. LinkedIn offers still surface through
+// the web search provider.
+export function isLinkedInDirectSourceEnabled() {
+  return process.env.ENABLE_LINKEDIN_DIRECT_SOURCE === "true";
+}
+
 export function buildLinkedInSearchContext(
   personalProfile: PersonalProfileFile,
   searchTargets: SearchTargetsFile,

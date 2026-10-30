@@ -10,6 +10,8 @@ import type { SearchTargetsFile } from "@/lib/config/search-targets";
 import { logServiceError } from "@/lib/observability/error-logging";
 import { normalizeListItem } from "@/lib/profile/schema";
 
+const GEMINI_REQUEST_TIMEOUT_MS = 30000;
+
 const optionalUrlSchema = z
   .union([z.url(), z.literal(""), z.null(), z.undefined()])
   .transform((value) => (value ? value : null))
@@ -494,6 +496,7 @@ async function generateWithGemini(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
       method: "POST",
+      signal: AbortSignal.timeout(GEMINI_REQUEST_TIMEOUT_MS),
       headers: {
         "content-type": "application/json",
         "x-goog-api-key": apiKey,

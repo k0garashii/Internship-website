@@ -15,6 +15,7 @@ export const GOOGLE_OAUTH_SCOPES = {
   ],
 } as const;
 
+const GOOGLE_REQUEST_TIMEOUT_MS = 15000;
 const GOOGLE_AUTH_BASE_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke";
@@ -224,6 +225,7 @@ export async function exchangeGoogleCodeForTokens(code: string, redirectUriOverr
   });
 
   const response = await fetch(GOOGLE_TOKEN_URL, {
+    signal: AbortSignal.timeout(GOOGLE_REQUEST_TIMEOUT_MS),
     method: "POST",
     headers: {
       "content-type": "application/x-www-form-urlencoded",
@@ -253,6 +255,7 @@ export async function refreshGoogleTokens(refreshToken: string) {
   });
 
   const response = await fetch(GOOGLE_TOKEN_URL, {
+    signal: AbortSignal.timeout(GOOGLE_REQUEST_TIMEOUT_MS),
     method: "POST",
     headers: {
       "content-type": "application/x-www-form-urlencoded",
@@ -274,6 +277,7 @@ export async function refreshGoogleTokens(refreshToken: string) {
 
 export async function revokeGoogleToken(token: string) {
   const response = await fetch(GOOGLE_REVOKE_URL, {
+    signal: AbortSignal.timeout(GOOGLE_REQUEST_TIMEOUT_MS),
     method: "POST",
     headers: {
       "content-type": "application/x-www-form-urlencoded",
@@ -289,6 +293,7 @@ export async function revokeGoogleToken(token: string) {
 
 export async function fetchGoogleUserInfo(accessToken: string) {
   const response = await fetch(GOOGLE_USERINFO_URL, {
+    signal: AbortSignal.timeout(GOOGLE_REQUEST_TIMEOUT_MS),
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -310,6 +315,7 @@ export async function gmailApiRequest<T>(
 ): Promise<T> {
   const response = await fetch(`${GMAIL_API_BASE_URL}${path}`, {
     ...init,
+    signal: init.signal ?? AbortSignal.timeout(GOOGLE_REQUEST_TIMEOUT_MS),
     headers: {
       Authorization: `Bearer ${accessToken}`,
       ...(init.headers ?? {}),
@@ -347,6 +353,7 @@ export async function listGmailMessages(options: {
   url.searchParams.set("maxResults", String(options.maxResults ?? 25));
 
   const response = await fetch(url, {
+    signal: AbortSignal.timeout(GOOGLE_REQUEST_TIMEOUT_MS),
     headers: {
       Authorization: `Bearer ${options.accessToken}`,
     },
@@ -376,6 +383,7 @@ export async function listGmailHistory(options: {
   }
 
   const response = await fetch(url, {
+    signal: AbortSignal.timeout(GOOGLE_REQUEST_TIMEOUT_MS),
     headers: {
       Authorization: `Bearer ${options.accessToken}`,
     },
@@ -406,6 +414,7 @@ export async function getGmailMessage(accessToken: string, messageId: string) {
   }
 
   const response = await fetch(url, {
+    signal: AbortSignal.timeout(GOOGLE_REQUEST_TIMEOUT_MS),
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -457,6 +466,7 @@ export async function createGmailDraft(options: {
   threadId?: string | null;
 }) {
   const response = await fetch(`${GMAIL_API_BASE_URL}/drafts`, {
+    signal: AbortSignal.timeout(GOOGLE_REQUEST_TIMEOUT_MS),
     method: "POST",
     headers: {
       Authorization: `Bearer ${options.accessToken}`,
@@ -491,6 +501,7 @@ export async function sendGmailMessage(options: {
   threadId?: string | null;
 }) {
   const response = await fetch(`${GMAIL_API_BASE_URL}/messages/send`, {
+    signal: AbortSignal.timeout(GOOGLE_REQUEST_TIMEOUT_MS),
     method: "POST",
     headers: {
       Authorization: `Bearer ${options.accessToken}`,
