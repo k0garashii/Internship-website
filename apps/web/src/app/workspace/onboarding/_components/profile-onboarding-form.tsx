@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { startTransition, useState } from "react";
+import { startTransition, useRef, useState } from "react";
+
+import {
+  applyResumeSuggestions,
+  type ResumeProfileSuggestions,
+} from "@/lib/profile/resume-suggestions";
 
 type ProfileDraft = {
   headline: string;
@@ -28,12 +33,17 @@ type ProfileDraft = {
   preferredDomains: string;
   preferencesNotes: string;
   employmentTypes: string[];
+  languages: string;
+  hasDrivingLicense: string;
+  mobilityRadiusKm: string;
+  excludedSectors: string;
 };
 
 type Props = {
   initialFullName: string;
   initialEmail: string;
   initialProfile: ProfileDraft;
+  initialResumeFileName: string | null;
 };
 
 type SavedDraft = {
@@ -131,6 +141,7 @@ export function ProfileOnboardingForm({
   initialFullName,
   initialEmail,
   initialProfile,
+  initialResumeFileName,
 }: Props) {
   const router = useRouter();
   const [fullName, setFullName] = useState(initialFullName);
@@ -147,6 +158,11 @@ export function ProfileOnboardingForm({
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [resumeFileName, setResumeFileName] = useState(initialResumeFileName);
+  const [isImportingResume, setIsImportingResume] = useState(false);
+  const [resumeMessage, setResumeMessage] = useState<string | null>(null);
+  const [resumeError, setResumeError] = useState<string | null>(null);
+  const resumeInputRef = useRef<HTMLInputElement>(null);
   const currentProfileSnapshot = createProfileSnapshotKey(profile);
   const hasUnsavedChanges =
     fullName !== savedFullName || currentProfileSnapshot !== savedProfileSnapshot;
@@ -169,6 +185,64 @@ export function ProfileOnboardingForm({
         ? current.employmentTypes.filter((item) => item !== value)
         : [...current.employmentTypes, value],
     }));
+  }
+
+  async function handleResumeImport(file: File) {
+    setIsImportingResume(true);
+    setResumeError(null);
+    setResumeMessage(null);
+
+    const formData = new FormData();
+    formData.append("resume", file);
+
+    const response = await fetch("/api/profile/resume", {
+      method: "POST",
+      body: formData,
+    });
+    const payload = (await response.json().catch(() => ({}))) as {
+      error?: string;
+      fileName?: string;
+      suggestions?: ResumeProfileSuggestions;
+    };
+
+    setIsImportingResume(false);
+
+    if (resumeInputRef.current) {
+      resumeInputRef.current.value = "";
+    }
+
+    if (!response.ok || !payload.suggestions) {
+      setResumeError(payload.error ?? "Impossible d’importer le CV.");
+      return;
+    }
+
+    const { profile: nextProfile, filledFields } = applyResumeSuggestions(
+      profile,
+      payload.suggestions,
+    );
+
+    setProfile(nextProfile);
+    setResumeFileName(payload.fileName ?? file.name);
+    setResumeMessage(
+      filledFields.length > 0
+        ? `CV importé : ${filledFields.length} champ(s) complété(s). Vérifie-les puis enregistre le profil.`
+        : "CV importé. Aucun champ vide à compléter : ton profil reste inchangé.",
+    );
+  }
+
+  async function handleResumeDelete() {
+    setResumeError(null);
+    setResumeMessage(null);
+
+    const response = await fetch("/api/profile/resume", { method: "DELETE" });
+
+    if (!response.ok) {
+      setResumeError("Impossible de supprimer le CV.");
+      return;
+    }
+
+    setResumeFileName(null);
+    setResumeMessage("CV supprimé.");
   }
 
   async function handleSaveProfile(event: React.FormEvent<HTMLFormElement>) {
@@ -277,6 +351,70 @@ export function ProfileOnboardingForm({
             className="rounded-[1.25rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
           >
             {formError}
+          </div>
+        ) : null}
+      </section>
+
+      <section className="space-y-4 rounded-[1.5rem] border border-line bg-white/70 p-5">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div className="space-y-2">
+            <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
+              Import du CV
+            </p>
+            <p className="text-sm leading-7 text-foreground">
+              Importe ton CV en PDF pour compléter automatiquement les champs vides :
+              compétences, formation, langues, postes visés. Rien n’est écrasé et rien
+              n’est enregistré tant que tu ne cliques pas sur « Enregistrer le profil ».
+            </p>
+            <p className="text-xs leading-6 text-muted">
+              {resumeFileName
+                ? `CV actuel : ${resumeFileName}. Il sert aussi à personnaliser tes brouillons.`
+                : "PDF de 4 Mo maximum, exporté depuis un traitement de texte (pas un scan)."}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <label className="inline-flex cursor-pointer items-center justify-center rounded-full bg-foreground px-5 py-3 text-sm font-medium text-white transition hover:-translate-y-0.5">
+              {isImportingResume ? "Analyse en cours..." : resumeFileName ? "Remplacer le CV" : "Importer mon CV"}
+              <input
+                ref={resumeInputRef}
+                type="file"
+                accept="application/pdf,.pdf"
+                className="sr-only"
+                disabled={isImportingResume}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+
+                  if (file) {
+                    void handleResumeImport(file);
+                  }
+                }}
+              />
+            </label>
+            {resumeFileName ? (
+              <button
+                type="button"
+                onClick={() => void handleResumeDelete()}
+                className="inline-flex items-center justify-center rounded-full border border-line px-5 py-3 text-sm font-medium text-foreground"
+              >
+                Supprimer le CV
+              </button>
+            ) : null}
+          </div>
+        </div>
+        {resumeMessage ? (
+          <div
+            aria-live="polite"
+            className="rounded-[1.25rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+          >
+            {resumeMessage}
+          </div>
+        ) : null}
+        {resumeError ? (
+          <div
+            role="alert"
+            className="rounded-[1.25rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+          >
+            {resumeError}
           </div>
         ) : null}
       </section>
@@ -564,6 +702,79 @@ export function ProfileOnboardingForm({
               </label>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="space-y-4 border-t border-line pt-6">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
+            Mobilité et critères éliminatoires
+          </p>
+          <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
+            Ce qui écarte une offre d’office
+          </h2>
+          <p className="mt-2 text-sm leading-7 text-muted">
+            Les offres d’un secteur exclu, ou qui exigent le permis si tu ne l’as pas, ne
+            sont plus proposées.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="space-y-2">
+            <span className="block text-sm font-medium text-foreground">Langues parlées</span>
+            <input
+              value={profile.languages}
+              onChange={(event) => updateProfile("languages", event.target.value)}
+              className="w-full rounded-2xl border border-line bg-white/80 px-4 py-3 outline-none transition focus:border-slate-900"
+              placeholder={fallbackPlaceholder(
+                savedDraft.profile.languages,
+                "Français, Anglais (B2)",
+              )}
+            />
+            <FieldErrorList messages={fieldErrors.languages} />
+          </label>
+          <label className="space-y-2">
+            <span className="block text-sm font-medium text-foreground">
+              Rayon de mobilité (km)
+            </span>
+            <input
+              type="number"
+              min={0}
+              max={1000}
+              inputMode="numeric"
+              value={profile.mobilityRadiusKm}
+              onChange={(event) => updateProfile("mobilityRadiusKm", event.target.value)}
+              className="w-full rounded-2xl border border-line bg-white/80 px-4 py-3 outline-none transition focus:border-slate-900"
+              placeholder={fallbackPlaceholder(savedDraft.profile.mobilityRadiusKm, "30")}
+            />
+            <FieldErrorList messages={fieldErrors.mobilityRadiusKm} />
+          </label>
+          <label className="space-y-2">
+            <span className="block text-sm font-medium text-foreground">Permis de conduire</span>
+            <select
+              value={profile.hasDrivingLicense}
+              onChange={(event) => updateProfile("hasDrivingLicense", event.target.value)}
+              className="w-full rounded-2xl border border-line bg-white/80 px-4 py-3 outline-none transition focus:border-slate-900"
+            >
+              <option value="">Non précisé</option>
+              <option value="yes">Oui</option>
+              <option value="no">Non</option>
+            </select>
+            <FieldErrorList messages={fieldErrors.hasDrivingLicense} />
+          </label>
+          <label className="space-y-2">
+            <span className="block text-sm font-medium text-foreground">Secteurs exclus</span>
+            <input
+              value={profile.excludedSectors}
+              onChange={(event) => updateProfile("excludedSectors", event.target.value)}
+              className="w-full rounded-2xl border border-line bg-white/80 px-4 py-3 outline-none transition focus:border-slate-900"
+              placeholder={fallbackPlaceholder(
+                savedDraft.profile.excludedSectors,
+                "Défense, tabac, jeux d’argent",
+              )}
+            />
+            <FieldErrorList messages={fieldErrors.excludedSectors} />
+          </label>
         </div>
       </section>
 

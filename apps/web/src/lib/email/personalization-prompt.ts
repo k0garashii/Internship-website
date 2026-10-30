@@ -48,6 +48,15 @@ export function buildOfferEmailPersonalizationPrompt(
       `Mots cles: ${formatList(context.candidate.searchKeywords)}`,
       `Types de contrat: ${formatList(context.candidate.employmentTypes)}`,
       `Notes de preferences: ${formatNullable(context.candidate.preferencesNotes)}`,
+      `Langues: ${formatList(context.candidate.languages)}`,
+      `Permis de conduire: ${
+        context.candidate.hasDrivingLicense === null
+          ? "Non renseigne"
+          : context.candidate.hasDrivingLicense
+            ? "Oui"
+            : "Non"
+      }`,
+      `Extrait du CV: ${formatNullable(context.candidate.resumeExcerpt)}`,
       `LinkedIn: ${formatNullable(context.candidate.links.linkedinUrl)}`,
       `GitHub: ${formatNullable(context.candidate.links.githubUrl)}`,
       `Portfolio: ${formatNullable(context.candidate.links.portfolioUrl)}`,

@@ -6,6 +6,9 @@ import {
   listItemSchema,
   normalizeListItem,
   personalProfileInputSchema,
+  readBooleanConstraint,
+  readNumberConstraint,
+  readStringArrayConstraint,
   slugify,
   workModeValues,
 } from "@/lib/profile/schema";
@@ -71,6 +74,10 @@ export const personalProfileFileSchema = z.object({
         .union([z.string().trim().max(1000), z.literal(""), z.null(), z.undefined()])
         .transform((value) => (value ? value : null))
         .default(null),
+      languages: z.array(listItemSchema).max(20).default([]),
+      hasDrivingLicense: z.boolean().nullable().default(null),
+      mobilityRadiusKm: nullableIntSchema.default(null),
+      excludedSectors: z.array(listItemSchema).max(30).default([]),
     }),
   }),
 });
@@ -137,6 +144,10 @@ export function exportPersonalProfileFile(account: {
         preferencesNotes: account.profile?.constraints
           ? (account.profile.constraints as Record<string, unknown>).preferencesNotes ?? null
           : null,
+        languages: readStringArrayConstraint(account.profile?.constraints, "languages"),
+        hasDrivingLicense: readBooleanConstraint(account.profile?.constraints, "hasDrivingLicense"),
+        mobilityRadiusKm: readNumberConstraint(account.profile?.constraints, "mobilityRadiusKm"),
+        excludedSectors: readStringArrayConstraint(account.profile?.constraints, "excludedSectors"),
       },
     },
   });
@@ -165,6 +176,15 @@ export function importPersonalProfileFile(file: PersonalProfileFile) {
     salaryExpectationMax: file.profile.constraints.salaryExpectationMax?.toString() ?? "",
     skills: file.profile.skills.map((skill) => normalizeListItem(skill)).join(", "),
     preferencesNotes: file.profile.constraints.preferencesNotes ?? "",
+    languages: file.profile.constraints.languages.join(", "),
+    hasDrivingLicense:
+      file.profile.constraints.hasDrivingLicense === null
+        ? ""
+        : file.profile.constraints.hasDrivingLicense
+          ? "yes"
+          : "no",
+    mobilityRadiusKm: file.profile.constraints.mobilityRadiusKm?.toString() ?? "",
+    excludedSectors: file.profile.constraints.excludedSectors.join(", "),
   });
 
   return {

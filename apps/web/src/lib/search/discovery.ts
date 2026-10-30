@@ -5,7 +5,7 @@ import type { SearchTargetsFile } from "@/lib/config/search-targets";
 import { discoverCareerSourcesForTargets } from "@/lib/company-targets/discovery";
 import { fetchCompanyCareerOffers } from "@/lib/company-targets/offers";
 import { generateCompanyTargetSuggestions } from "@/lib/company-targets/suggestions";
-import { matchProfileToOffer } from "@/lib/search/matching";
+import { findOfferExclusionReason, matchProfileToOffer } from "@/lib/search/matching";
 import { normalizeDiscoveryOffers } from "@/lib/search/normalization";
 import {
   buildLinkedInSearchContext,
@@ -667,7 +667,18 @@ export async function discoverInitialOffers(
     );
   }
 
-  const scoredOffers = Array.from(offerMap.values()).map((offer) => {
+  const candidateOffers = Array.from(offerMap.values());
+  const eligibleOffers = candidateOffers.filter(
+    (offer) => !findOfferExclusionReason({ personalProfile: config.personalProfile }, offer),
+  );
+
+  if (eligibleOffers.length < candidateOffers.length) {
+    warnings.push(
+      `${candidateOffers.length - eligibleOffers.length} offre(s) écartée(s) par tes critères éliminatoires (secteurs exclus, permis).`,
+    );
+  }
+
+  const scoredOffers = eligibleOffers.map((offer) => {
     const scoring = scoreDiscoveryOffer(offer);
     const matching = matchProfileToOffer(
       {

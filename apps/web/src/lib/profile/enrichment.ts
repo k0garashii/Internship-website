@@ -119,7 +119,7 @@ function compactText(value: string, maxLength = 1200) {
   return normalizeListItem(value).slice(0, maxLength);
 }
 
-function inferSignalsFromText(text: string) {
+export function inferSignalsFromText(text: string) {
   const results: ExtractionResult["signals"] = [];
 
   for (const item of technologyPatterns) {
@@ -325,7 +325,7 @@ async function extractGithubSignals(url: string): Promise<ExtractionResult> {
   };
 }
 
-async function parsePdfText(buffer: Buffer) {
+export async function parsePdfText(buffer: Buffer) {
   const pdfParseModule = (await import("pdf-parse")) as {
     PDFParse: new (input: { data: Buffer }) => {
       getText: () => Promise<{ text?: string | null }>;

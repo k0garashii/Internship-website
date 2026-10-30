@@ -30,6 +30,10 @@ type FullProfilePayload = {
   salaryExpectationMax: string;
   visaNeedsSponsorship: boolean;
   preferencesNotes: string;
+  languages: string;
+  hasDrivingLicense: string;
+  mobilityRadiusKm: string;
+  excludedSectors: string;
 };
 
 type DomainSelectionDraft = {

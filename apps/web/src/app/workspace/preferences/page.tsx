@@ -60,6 +60,10 @@ export default async function PreferencesPage() {
           salaryExpectationMax: draft.profile.salaryExpectationMax,
           visaNeedsSponsorship: draft.profile.visaNeedsSponsorship,
           preferencesNotes: draft.profile.preferencesNotes,
+          languages: draft.profile.languages,
+          hasDrivingLicense: draft.profile.hasDrivingLicense,
+          mobilityRadiusKm: draft.profile.mobilityRadiusKm,
+          excludedSectors: draft.profile.excludedSectors,
         }}
         initialDomains={draft.domains}
       />

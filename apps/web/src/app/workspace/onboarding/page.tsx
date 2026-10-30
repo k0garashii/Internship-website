@@ -41,6 +41,7 @@ export default async function ProfileOnboardingPage() {
         initialFullName={draft.fullName}
         initialEmail={draft.email}
         initialProfile={draft.profile}
+        initialResumeFileName={draft.resumeFileName}
       />
     </main>
   );

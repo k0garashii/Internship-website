@@ -2,9 +2,12 @@ import { z } from "zod";
 
 import { db } from "@/lib/db";
 import {
+  readBooleanConstraint,
   readStringArrayConstraint,
   readStringConstraint,
 } from "@/lib/profile/schema";
+
+const RESUME_EXCERPT_MAX_LENGTH = 4000;
 
 const candidateLinksSchema = z.object({
   linkedinUrl: z.string().nullable(),
@@ -31,6 +34,9 @@ const offerGeminiCandidateSchema = z.object({
   searchKeywords: z.array(z.string()),
   employmentTypes: z.array(z.string()),
   preferencesNotes: z.string().nullable(),
+  languages: z.array(z.string()),
+  hasDrivingLicense: z.boolean().nullable(),
+  resumeExcerpt: z.string().nullable(),
   links: candidateLinksSchema,
 });
 
@@ -107,6 +113,7 @@ export async function buildOfferGeminiContext(
           githubUrl: true,
           portfolioUrl: true,
           resumeUrl: true,
+          resumeText: true,
           constraints: true,
           skills: {
             orderBy: [
@@ -240,6 +247,9 @@ export async function buildOfferGeminiContext(
       searchKeywords: readStringArrayConstraint(constraints, "searchKeywords"),
       employmentTypes: readStringArrayConstraint(constraints, "employmentTypes"),
       preferencesNotes: readStringConstraint(constraints, "preferencesNotes"),
+      languages: readStringArrayConstraint(constraints, "languages"),
+      hasDrivingLicense: readBooleanConstraint(constraints, "hasDrivingLicense"),
+      resumeExcerpt: user.profile.resumeText?.slice(0, RESUME_EXCERPT_MAX_LENGTH) ?? null,
       links: {
         linkedinUrl: user.profile.linkedinUrl,
         githubUrl: user.profile.githubUrl,

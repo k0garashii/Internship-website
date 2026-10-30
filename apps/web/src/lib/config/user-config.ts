@@ -27,6 +27,7 @@ import {
   readStringArrayConstraint,
   readStringConstraint,
   slugify,
+  splitMultilineOrCommaList,
 } from "@/lib/profile/schema";
 
 const configImportRequestSchema = z.object({
@@ -53,9 +54,29 @@ function buildMergedConstraints(
     preferencesNotes: string | null;
     employmentTypes: string[];
     searchKeywords: string[];
+    languages: string[];
+    hasDrivingLicense: boolean | null;
+    mobilityRadiusKm: number | null;
+    excludedSectors: string[];
   }>,
 ): Prisma.JsonObject {
+  const existingObject =
+    typeof existing === "object" && existing !== null && !Array.isArray(existing)
+      ? (existing as Prisma.JsonObject)
+      : {};
+
   return {
+    ...existingObject,
+    ...(updates.languages !== undefined ? { languages: updates.languages } : {}),
+    ...(updates.hasDrivingLicense !== undefined
+      ? { hasDrivingLicense: updates.hasDrivingLicense }
+      : {}),
+    ...(updates.mobilityRadiusKm !== undefined
+      ? { mobilityRadiusKm: updates.mobilityRadiusKm }
+      : {}),
+    ...(updates.excludedSectors !== undefined
+      ? { excludedSectors: updates.excludedSectors }
+      : {}),
     availabilityEndDate:
       updates.availabilityEndDate ??
       readStringConstraint(existing, "availabilityEndDate") ??
@@ -256,6 +277,10 @@ export async function importUserConfig(viewer: AuthenticatedViewer, input: unkno
           constraints: buildMergedConstraints(existingUser.profile?.constraints, {
             availabilityEndDate: importedProfile.parsedInput.availabilityEndDate || null,
             preferencesNotes: importedProfile.parsedInput.preferencesNotes || null,
+            languages: splitMultilineOrCommaList(importedProfile.parsedInput.languages),
+            hasDrivingLicense: importedProfile.parsedInput.hasDrivingLicense,
+            mobilityRadiusKm: importedProfile.parsedInput.mobilityRadiusKm,
+            excludedSectors: splitMultilineOrCommaList(importedProfile.parsedInput.excludedSectors),
           }),
         },
         create: {
@@ -284,6 +309,10 @@ export async function importUserConfig(viewer: AuthenticatedViewer, input: unkno
           constraints: buildMergedConstraints({}, {
             availabilityEndDate: importedProfile.parsedInput.availabilityEndDate || null,
             preferencesNotes: importedProfile.parsedInput.preferencesNotes || null,
+            languages: splitMultilineOrCommaList(importedProfile.parsedInput.languages),
+            hasDrivingLicense: importedProfile.parsedInput.hasDrivingLicense,
+            mobilityRadiusKm: importedProfile.parsedInput.mobilityRadiusKm,
+            excludedSectors: splitMultilineOrCommaList(importedProfile.parsedInput.excludedSectors),
           }),
         },
         select: {

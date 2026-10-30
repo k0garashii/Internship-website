@@ -142,6 +142,19 @@ export const personalProfileInputSchema = z.object({
   salaryExpectationMax: nullableNumberInputSchema("Invalid maximum salary"),
   skills: z.string().default(""),
   preferencesNotes: trimmedStringSchema.max(1000).optional().default(""),
+  languages: z.string().max(500).default(""),
+  hasDrivingLicense: z
+    .union([z.enum(["yes", "no"]), z.literal(""), z.null()])
+    .optional()
+    .transform((value) => (value === "yes" ? true : value === "no" ? false : null)),
+  mobilityRadiusKm: nullableNumberInputSchema("Invalid mobility radius")
+    .refine(
+      (value) => value === null || (value >= 0 && value <= 1000),
+      "Mobility radius must be between 0 and 1000 km",
+    )
+    .optional()
+    .transform((value) => value ?? null),
+  excludedSectors: z.string().max(500).default(""),
 });
 
 export const searchTargetsInputSchema = z.object({
@@ -174,7 +187,27 @@ export function buildProfileConstraints(parsed: ProfileOnboardingData): Prisma.J
     preferencesNotes: parsed.preferencesNotes || null,
     employmentTypes: parsed.employmentTypes,
     searchKeywords: splitMultilineOrCommaList(parsed.searchKeywords),
+    languages: splitMultilineOrCommaList(parsed.languages),
+    hasDrivingLicense: parsed.hasDrivingLicense,
+    mobilityRadiusKm: parsed.mobilityRadiusKm,
+    excludedSectors: splitMultilineOrCommaList(parsed.excludedSectors),
   };
+}
+
+export function readBooleanConstraint(value: unknown, key: string) {
+  if (typeof value === "object" && value !== null && typeof (value as JsonRecord)[key] === "boolean") {
+    return (value as JsonRecord)[key] as boolean;
+  }
+
+  return null;
+}
+
+export function readNumberConstraint(value: unknown, key: string) {
+  if (typeof value === "object" && value !== null && typeof (value as JsonRecord)[key] === "number") {
+    return (value as JsonRecord)[key] as number;
+  }
+
+  return null;
 }
 
 export function readStringConstraint(value: unknown, key: string) {
