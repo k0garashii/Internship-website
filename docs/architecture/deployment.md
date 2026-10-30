@@ -17,6 +17,12 @@ La liste complete et commentee est dans `apps/web/.env.example`.
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: optionnels, requis pour Gmail
 - `GEMINI_API_KEY`: optionnel mais requis pour la generation Gemini
 - `EMAIL_FORWARDING_DOMAIN`: domaine ou adresse de forwarding configuree
+- `CRON_SECRET`: secret aleatoire (`openssl rand -hex 32`) qui protege `/api/cron/maintenance`. Vercel l envoie automatiquement a la tache planifiee quotidienne declaree dans `apps/web/vercel.json`. Sans lui, recherche quotidienne, verification des offres et recapitulatifs sont desactives.
+- `RESEND_API_KEY`, `EMAIL_FROM`: optionnels. Sans eux, le recapitulatif part du Gmail de l utilisateur vers lui-meme (permission d envoi Gmail requise).
+
+## Taches planifiees
+
+`/api/cron/maintenance` traite une tranche de travail par appel (60 s maximum) : jobs en attente, recherche quotidienne par utilisateur, verification des offres suivies, recapitulatifs. Vercel l appelle une fois par jour (limite du plan Hobby). Pour etaler le travail sur la journee, le workflow GitHub `scheduled-maintenance.yml` l appelle toutes les 30 minutes une fois les secrets de depot `APP_URL` et `CRON_SECRET` renseignes (Settings, Secrets and variables, Actions).
 
 ## Parametrage Vercel
 
@@ -43,6 +49,8 @@ Pour une base deja creee avec `prisma db push`, il faut marquer cette migration 
 npx prisma migrate resolve --applied 0_init
 npx prisma migrate deploy
 ```
+
+Sur Vercel, le script `vercel-build` lance `prisma migrate deploy` avant le build : les migrations commitées sont appliquées automatiquement à chaque déploiement. Les déploiements de preview partagent aujourd’hui la base de production, donc une migration d’une branche s’applique dès sa preview : les migrations doivent rester additives (nouvelles colonnes nullables ou avec valeur par défaut) pour ne pas casser le code déjà en ligne.
 
 Ne plus utiliser `prisma db push` sur la base de production : toute evolution du schema passe par `npm run db:migrate:dev` en local, qui genere une nouvelle migration a commiter.
 
