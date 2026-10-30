@@ -32,7 +32,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         </h1>
         <p className="app-copy max-w-2xl">
           Connecte-toi avec ton email et ton mot de passe pour retrouver tes recherches,
-          tes brouillons et l etat courant de ton profil. La connexion Gmail se propose
+          tes brouillons et l’état courant de ton profil. La connexion Gmail se propose
           ensuite directement sur le tableau de bord.
         </p>
       </div>
@@ -44,15 +44,15 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             Avant de continuer
           </p>
           <ul className="mt-5 space-y-4 text-sm leading-7 text-foreground md:text-base">
-            <li>Tu recuperes directement tes recherches, tes offres et tes brouillons.</li>
-            <li>Si tu venais d une page protegee, tu y es renvoye apres la connexion.</li>
-            <li>Les erreurs de saisie restent affichees sous les champs concernes.</li>
+            <li>Tu récupères directement tes recherches, tes offres et tes brouillons.</li>
+            <li>Si tu venais d’une page protégée, tu y es renvoyé après la connexion.</li>
+            <li>Les erreurs de saisie restent affichées sous les champs concernés.</li>
           </ul>
           <p className="mt-6 text-sm leading-7 text-muted">
             Pas encore de compte ?
             {" "}
             <Link href="/sign-up" className="font-medium text-foreground underline">
-              Cree ton espace.
+              Crée ton espace.
             </Link>
           </p>
         </aside>

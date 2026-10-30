@@ -4,6 +4,12 @@ import { useState } from "react";
 
 import type { EmailDraftListItem } from "@/lib/email/drafts";
 
+const DRAFT_KIND_LABELS: Record<EmailDraftListItem["kind"], string> = {
+  APPLICATION: "Email de candidature",
+  FOLLOW_UP: "Relance",
+  COVER_LETTER: "Lettre de motivation",
+};
+
 type Props = {
   initialDrafts: EmailDraftListItem[];
   gmailConnected: boolean;
@@ -134,7 +140,7 @@ export function EmailDraftsPanel({
     };
 
     if (!response.ok) {
-      setError(payload.error ?? "Impossible de creer le brouillon Gmail");
+      setError(payload.error ?? "Impossible de créer le brouillon Gmail");
       setPendingDraftId(null);
       return;
     }
@@ -170,7 +176,7 @@ export function EmailDraftsPanel({
     };
 
     if (!response.ok) {
-      setError(payload.error ?? "Impossible d envoyer via Gmail");
+      setError(payload.error ?? "Impossible d’envoyer via Gmail");
       setPendingDraftId(null);
       return;
     }
@@ -208,8 +214,8 @@ export function EmailDraftsPanel({
           Relire, corriger et pousser vers Gmail si le flux est actif.
         </h2>
         <p className="text-sm leading-7 text-foreground">
-          La sauvegarde garde le brouillon en base. Si Gmail est connecte, tu peux ensuite
-          creer un brouillon Gmail ou envoyer directement depuis l application.
+          La sauvegarde garde le brouillon en base. Si Gmail est connecté, tu peux ensuite
+          créer un brouillon Gmail ou envoyer directement depuis l’application.
         </p>
       </div>
 
@@ -217,7 +223,7 @@ export function EmailDraftsPanel({
         <div className="rounded-[1.25rem] border border-line bg-white/70 p-4">
           <p className="text-sm text-muted">Connexion Gmail</p>
           <p className="mt-2 text-lg font-medium text-foreground">
-            {gmailConnected ? "Active" : "A connecter"}
+            {gmailConnected ? "Active" : "À connecter"}
           </p>
         </div>
         <div className="rounded-[1.25rem] border border-line bg-white/70 p-4">
@@ -270,13 +276,16 @@ export function EmailDraftsPanel({
                           {draft.deliveryProvider}
                         </span>
                       ) : null}
+                      <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-foreground">
+                        {DRAFT_KIND_LABELS[draft.kind]}
+                      </span>
                     </div>
                     <div>
                       <h3 className="text-xl font-semibold tracking-tight text-foreground">
                         {draft.jobOffer?.title ?? "Brouillon sans offre"}
                       </h3>
                       <p className="mt-2 text-sm text-muted">
-                        {draft.jobOffer?.companyName ?? "Entreprise inconnue"} - mis a jour le{" "}
+                        {draft.jobOffer?.companyName ?? "Entreprise inconnue"} - mis à jour le{" "}
                         {formatDateTime(draft.updatedAt)}
                       </p>
                     </div>
@@ -288,7 +297,7 @@ export function EmailDraftsPanel({
                       rel="noreferrer"
                       className="inline-flex items-center justify-center rounded-full border border-line px-4 py-2 text-sm font-medium text-foreground transition hover:-translate-y-0.5"
                     >
-                      Ouvrir l offre source
+                      Ouvrir l’offre source
                     </a>
                   ) : null}
                 </div>
@@ -379,22 +388,26 @@ export function EmailDraftsPanel({
                   >
                     Copier
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleCreateGmailDraft(draft.id)}
-                    disabled={pendingDraftId === draft.id || !gmailConnected}
-                    className="inline-flex items-center justify-center rounded-full border border-line px-5 py-3 text-sm font-medium text-foreground transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {pendingDraftId === draft.id ? "Traitement..." : "Creer brouillon Gmail"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSendGmail(draft.id)}
-                    disabled={pendingDraftId === draft.id || !gmailCanSend}
-                    className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-medium text-emerald-800 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {pendingDraftId === draft.id ? "Traitement..." : "Envoyer via Gmail"}
-                  </button>
+                  {draft.kind !== "COVER_LETTER" ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleCreateGmailDraft(draft.id)}
+                        disabled={pendingDraftId === draft.id || !gmailConnected}
+                        className="inline-flex items-center justify-center rounded-full border border-line px-5 py-3 text-sm font-medium text-foreground transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {pendingDraftId === draft.id ? "Traitement..." : "Créer brouillon Gmail"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSendGmail(draft.id)}
+                        disabled={pendingDraftId === draft.id || !gmailCanSend}
+                        className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-medium text-emerald-800 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {pendingDraftId === draft.id ? "Traitement..." : "Envoyer via Gmail"}
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               </article>
             );
@@ -402,8 +415,8 @@ export function EmailDraftsPanel({
         </div>
       ) : (
         <article className="rounded-[1.5rem] border border-dashed border-line bg-white/70 p-6 text-sm leading-7 text-muted">
-          Aucun brouillon n a encore ete genere. Lance d abord une recherche puis cree
-          un brouillon depuis une offre persistee.
+          Aucun brouillon n’a encore été généré. Lance d’abord une recherche puis crée
+          un brouillon depuis une offre persistée.
         </article>
       )}
     </section>

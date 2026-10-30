@@ -527,7 +527,7 @@ export async function fetchCompanyCareerOffers(
       atsProvider: params.atsProvider,
       discoveryMethod: params.discoveryMethod,
       sourceSummary: "Aucun point d entree carriere n a ete fourni pour cette entreprise.",
-      summary: "Impossible de recuperer des offres tant qu aucune page carriere ou ATS n a ete detecte.",
+      summary: "Impossible de récupérer des offres tant qu’aucune page carrière ou ATS n’a été détecté.",
       warnings: ["Commence par lancer la decouverte des pages carrieres / ATS depuis la page de recherche."],
       offers: [],
     });
@@ -544,7 +544,7 @@ export async function fetchCompanyCareerOffers(
       sources.push(...(await fetchLeverOffers(params.careerPageUrl)));
     } else {
       if (params.atsProvider) {
-        warnings.push(`ATS ${params.atsProvider} non interroge en API publique, fallback HTML utilise.`);
+        warnings.push(`ATS ${params.atsProvider} non interrogé en API publique, fallback HTML utilisé.`);
       }
       sources.push(...(await fetchGenericCareerPageOffers(params.careerPageUrl)));
     }
@@ -560,7 +560,7 @@ export async function fetchCompanyCareerOffers(
       },
     });
 
-    warnings.push("La lecture directe de la source ATS a echoue, tentative de lecture HTML.");
+    warnings.push("La lecture directe de la source ATS a échoué, tentative de lecture HTML.");
 
     try {
       sources.push(...(await fetchGenericCareerPageOffers(params.careerPageUrl)));
@@ -576,7 +576,7 @@ export async function fetchCompanyCareerOffers(
         },
       });
 
-      warnings.push("Impossible de lire les offres depuis la page carriere fournie.");
+      warnings.push("Impossible de lire les offres depuis la page carrière fournie.");
     }
   }
 
@@ -595,8 +595,8 @@ export async function fetchCompanyCareerOffers(
     sourceSummary,
     summary:
       offers.length > 0
-        ? `${offers.length} offre(s) lue(s) depuis la source carriere de ${params.companyName}.`
-        : `Aucune offre exploitable n a ete extraite pour ${params.companyName}.`,
+        ? `${offers.length} offre(s) lue(s) depuis la source carrière de ${params.companyName}.`
+        : `Aucune offre exploitable n’a été extraite pour ${params.companyName}.`,
     warnings: uniqueList(warnings),
     offers,
   });

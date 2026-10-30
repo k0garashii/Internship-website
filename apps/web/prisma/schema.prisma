@@ -162,6 +162,12 @@ enum FeedbackDecision {
   OFFER_ACCEPTED
 }
 
+enum DraftKind {
+  APPLICATION
+  FOLLOW_UP
+  COVER_LETTER
+}
+
 enum DraftStatus {
   DRAFT
   READY_FOR_REVIEW
@@ -550,6 +556,11 @@ model UserProfile {
   salaryExpectationMin Int?
   salaryExpectationMax Int?
   constraints          Json?
+  resumeFileName       String?
+  resumeText           String?
+  resumeUploadedAt     DateTime?
+  dailyDigestEnabled   Boolean          @default(true)
+  lastDigestSentAt     DateTime?
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
   skills               ProfileSkill[]
@@ -684,45 +695,51 @@ model SearchRun {
 }
 
 model JobOffer {
-  id              String                @id @default(cuid())
-  userId          String
-  workspaceId     String?
-  sourceKind      OfferSourceKind
-  sourceSite      String
-  sourceUrl       String
-  externalId      String?
-  fingerprint     String
-  companyName     String
-  companyWebsite  String?
-  title           String
-  locationLabel   String?
-  countryCode     String?
-  employmentType  EmploymentType?
-  workMode        WorkMode?
-  experienceLevel ExperienceLevel?
-  salaryMin       Int?
-  salaryMax       Int?
-  currency        String?
-  description     String?
-  rawPayload      Json?
-  status          OfferLifecycleStatus  @default(DISCOVERED)
-  postedAt        DateTime?
-  firstSeenAt     DateTime              @default(now())
-  lastSeenAt      DateTime              @default(now())
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
-  drafts          EmailDraft[]
-  feedbackEntries OfferFeedback[]
-  mailboxSignals  OfferMailboxSignal[]
-  searchMatches   SearchRunOffer[]
-  behaviorEvents  SearchBehaviorEvent[]
-  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mailboxMessages MailboxMessage[]
-  workspace       Workspace?            @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  id                    String                @id @default(cuid())
+  userId                String
+  workspaceId           String?
+  sourceKind            OfferSourceKind
+  sourceSite            String
+  sourceUrl             String
+  externalId            String?
+  fingerprint           String
+  companyName           String
+  companyWebsite        String?
+  title                 String
+  locationLabel         String?
+  countryCode           String?
+  employmentType        EmploymentType?
+  workMode              WorkMode?
+  experienceLevel       ExperienceLevel?
+  salaryMin             Int?
+  salaryMax             Int?
+  currency              String?
+  description           String?
+  rawPayload            Json?
+  status                OfferLifecycleStatus  @default(DISCOVERED)
+  postedAt              DateTime?
+  firstSeenAt           DateTime              @default(now())
+  lastSeenAt            DateTime              @default(now())
+  nextFollowUpAt        DateTime?
+  interviewAt           DateTime?
+  expiredAt             DateTime?
+  availabilityCheckedAt DateTime?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  drafts                EmailDraft[]
+  feedbackEntries       OfferFeedback[]
+  mailboxSignals        OfferMailboxSignal[]
+  searchMatches         SearchRunOffer[]
+  behaviorEvents        SearchBehaviorEvent[]
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mailboxMessages       MailboxMessage[]
+  workspace             Workspace?            @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@unique([userId, fingerprint])
   @@index([userId, status])
   @@index([userId, postedAt])
+  @@index([userId, nextFollowUpAt])
+  @@index([availabilityCheckedAt])
   @@index([workspaceId])
 }
 
@@ -766,6 +783,7 @@ model EmailDraft {
   userId                 String
   workspaceId            String?
   jobOfferId             String?
+  kind                   DraftKind             @default(APPLICATION)
   status                 DraftStatus           @default(DRAFT)
   recipientEmail         String?
   subject                String?

@@ -3,6 +3,7 @@ import { WorkspaceFeature } from "@prisma/client";
 import type { AuthenticatedViewer } from "@/lib/auth/viewer";
 import { assertWorkspaceViewer } from "@/lib/auth/viewer";
 import { generateOfferEmailDraft } from "@/lib/email/drafts";
+import type { OfferDraftKind } from "@/lib/email/personalization-prompt";
 import { sendAdhocGmailMessage } from "@/lib/email/gmail-send";
 import { syncGmailMailbox } from "@/lib/email/gmail-sync";
 import { assertWorkspaceFeatureAccess } from "@/server/application/entitlements/entitlement-service";
@@ -10,6 +11,7 @@ import { assertWorkspaceFeatureAccess } from "@/server/application/entitlements/
 export async function generateOfferDraftForViewer(
   viewer: AuthenticatedViewer,
   jobOfferId: string,
+  kind: OfferDraftKind = "APPLICATION",
 ) {
   const workspaceViewer = assertWorkspaceViewer(viewer);
 
@@ -18,7 +20,7 @@ export async function generateOfferDraftForViewer(
     WorkspaceFeature.EMAIL_DRAFT_GENERATION,
   );
 
-  return generateOfferEmailDraft(workspaceViewer.userId, jobOfferId);
+  return generateOfferEmailDraft(workspaceViewer.userId, jobOfferId, kind);
 }
 
 export async function syncGmailMailboxForViewer(viewer: AuthenticatedViewer) {

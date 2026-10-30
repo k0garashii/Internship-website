@@ -1,5 +1,7 @@
 import { db } from "@/lib/db";
 import {
+  readBooleanConstraint,
+  readNumberConstraint,
   readStringArrayConstraint,
   readStringConstraint,
 } from "@/lib/profile/schema";
@@ -33,6 +35,9 @@ export async function getProfileFormData(userId: string) {
           salaryExpectationMin: true,
           salaryExpectationMax: true,
           constraints: true,
+          resumeFileName: true,
+          resumeUploadedAt: true,
+          dailyDigestEnabled: true,
           skills: {
             orderBy: {
               isHighlighted: "desc",
@@ -82,12 +87,19 @@ export async function getProfileFormData(userId: string) {
   });
 }
 
+function toLicenseChoice(value: boolean | null) {
+  return value === true ? "yes" : value === false ? "no" : "";
+}
+
 export function mapAccountToProfileDraft(
   account: NonNullable<Awaited<ReturnType<typeof getProfileFormData>>>,
 ) {
   return {
     fullName: account.fullName ?? "",
     email: account.email,
+    resumeFileName: account.profile?.resumeFileName ?? null,
+    resumeUploadedAt: account.profile?.resumeUploadedAt?.toISOString() ?? null,
+    dailyDigestEnabled: account.profile?.dailyDigestEnabled ?? true,
     domains: account.searchDomains.map((domain) => ({
       id: domain.id,
       label: domain.label,
@@ -127,6 +139,14 @@ export function mapAccountToProfileDraft(
       searchKeywords: readStringArrayConstraint(account.profile?.constraints, "searchKeywords")
         .join(", "),
       preferencesNotes: readStringConstraint(account.profile?.constraints, "preferencesNotes"),
+      languages: readStringArrayConstraint(account.profile?.constraints, "languages").join(", "),
+      hasDrivingLicense: toLicenseChoice(
+        readBooleanConstraint(account.profile?.constraints, "hasDrivingLicense"),
+      ),
+      mobilityRadiusKm:
+        readNumberConstraint(account.profile?.constraints, "mobilityRadiusKm")?.toString() ?? "",
+      excludedSectors: readStringArrayConstraint(account.profile?.constraints, "excludedSectors")
+        .join(", "),
       employmentTypes:
         account.searchTargets[0]?.contractTypes.map((type) => type.toString()) ??
         readStringArrayConstraint(account.profile?.constraints, "employmentTypes"),

@@ -390,8 +390,15 @@ function extractTitleFromSubject(subject: string, companyName: string | null) {
   return cleaned;
 }
 
+// Hints are written without accents, so real subjects ("Candidature reçue")
+// are compared once diacritics are stripped.
+function foldForHintMatching(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
 function looksLikeIgnoreCaseMatch(subject: string | null) {
-  const normalized = normalizeWhitespace(subject)?.toLowerCase();
+  const whitespaceNormalized = normalizeWhitespace(subject);
+  const normalized = whitespaceNormalized ? foldForHintMatching(whitespaceNormalized) : null;
 
   if (!normalized) {
     return false;
@@ -401,10 +408,9 @@ function looksLikeIgnoreCaseMatch(subject: string | null) {
 }
 
 function looksLikeOpportunityContent(input: InboundEmailOpportunityCandidate) {
-  const joinedText = [input.subject, input.snippet, input.bodyPreview]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
+  const joinedText = foldForHintMatching(
+    [input.subject, input.snippet, input.bodyPreview].filter(Boolean).join(" "),
+  );
 
   return OPPORTUNITY_HINTS.some((hint) => joinedText.includes(hint));
 }

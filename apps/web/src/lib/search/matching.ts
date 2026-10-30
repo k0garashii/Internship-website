@@ -415,6 +415,40 @@ function scoreInferredPreferenceBoost(config: MatchConfig, offer: SearchDiscover
   } satisfies OfferProfileMatchBreakdownItem;
 }
 
+const DRIVING_LICENSE_REQUIRED_PATTERN =
+  /permis (?:b|de conduire)(?: \w+){0,4} (?:exige|obligatoire|indispensable|requis|necessaire|imperatif)|(?:exige|obligatoire|indispensable|requis|necessaire|imperatif)(?: \w+){0,3} permis (?:b|de conduire)|driving licen[cs]e (?:is )?(?:required|mandatory)/;
+
+function containsPhrase(normalizedText: string, phrase: string) {
+  const normalizedPhrase = normalizeText(phrase);
+
+  return normalizedPhrase.length > 0 && ` ${normalizedText} `.includes(` ${normalizedPhrase} `);
+}
+
+// Deal-breakers declared in the profile: such offers are dropped instead of
+// being ranked lower, whatever their score.
+export function findOfferExclusionReason(
+  config: Pick<MatchConfig, "personalProfile">,
+  offer: Pick<SearchDiscoveryOffer, "title" | "companyName" | "summary" | "profileSnippet">,
+) {
+  const constraints = config.personalProfile.profile.constraints;
+  const offerText = normalizeText(
+    [offer.title, offer.companyName, offer.summary, offer.profileSnippet].filter(Boolean).join(" "),
+  );
+  const excludedSector = constraints.excludedSectors.find((sector) =>
+    containsPhrase(offerText, sector),
+  );
+
+  if (excludedSector) {
+    return `Secteur exclu : ${excludedSector}`;
+  }
+
+  if (constraints.hasDrivingLicense === false && DRIVING_LICENSE_REQUIRED_PATTERN.test(offerText)) {
+    return "Permis de conduire exigé";
+  }
+
+  return null;
+}
+
 export function matchProfileToOffer(
   config: MatchConfig,
   offer: SearchDiscoveryOffer,

@@ -28,7 +28,7 @@ const primaryItems: NavItem[] = [
   {
     href: "/workspace/profile",
     label: "Gestion de profil",
-    description: "Profil, preferences et domaines",
+    description: "Profil, préférences et domaines",
     shortLabel: "GP",
   },
   {
@@ -52,13 +52,19 @@ const secondaryGroups = [
       {
         href: "/workspace/email",
         label: "Messagerie Gmail",
-        description: "Boite, reponses et suivi email",
+        description: "Boîte, réponses et suivi email",
         shortLabel: "EM",
+      },
+      {
+        href: "/workspace/applications",
+        label: "Candidatures",
+        description: "Suivi, relances et entretiens",
+        shortLabel: "CA",
       },
       {
         href: "/workspace/drafts",
         label: "Brouillons",
-        description: "Relire et copier les emails generes",
+        description: "Relire et copier les emails générés",
         shortLabel: "BR",
       },
     ],

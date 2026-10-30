@@ -71,15 +71,15 @@ export default async function CompanyOffersPage({ params, searchParams }: Props)
         <section className="app-hero p-6 md:p-8">
           <p className="app-kicker">Offres par entreprise</p>
           <h1 className="mt-4 text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
-            Impossible d ouvrir cette entreprise.
+            Impossible d’ouvrir cette entreprise.
           </h1>
           <p className="app-copy mt-4 max-w-3xl">
-            Les informations minimales de source carriere sont absentes. Reviens sur
-            la collecte d offres puis relance la decouverte des pages carrieres / ATS.
+            Les informations minimales de source carrière sont absentes. Reviens sur
+            la collecte d’offres puis relance la découverte des pages carrières / ATS.
           </p>
           <div className="mt-6">
             <Link href="/workspace/search" className="back-link">
-              Retour a la collecte d offres
+              Retour à la collecte d’offres
             </Link>
           </div>
         </section>
@@ -151,7 +151,7 @@ export default async function CompanyOffersPage({ params, searchParams }: Props)
               </div>
               {result.discoveryMethod ? (
                 <div className="status-pill status-pill-info">
-                  Source detectee: {result.discoveryMethod}
+                  Source détectée: {result.discoveryMethod}
                 </div>
               ) : null}
               <div className="status-pill status-pill-success">
@@ -162,7 +162,7 @@ export default async function CompanyOffersPage({ params, searchParams }: Props)
 
           <div className="flex flex-wrap gap-3">
             <Link href="/workspace/search" className="back-link">
-              Retour a la collecte d offres
+              Retour à la collecte d’offres
             </Link>
             {result.websiteUrl ? (
               <TrackedSearchLink
@@ -211,7 +211,7 @@ export default async function CompanyOffersPage({ params, searchParams }: Props)
                 }}
                 className="inline-flex items-center justify-center rounded-full bg-foreground px-4 py-2 text-sm font-medium text-white transition hover:-translate-y-0.5"
               >
-                Ouvrir la page carriere
+                Ouvrir la page carrière
               </TrackedSearchLink>
             ) : null}
           </div>
@@ -278,7 +278,7 @@ export default async function CompanyOffersPage({ params, searchParams }: Props)
                   }}
                   className="inline-flex items-center justify-center rounded-full bg-foreground px-5 py-3 text-sm font-medium text-white transition hover:-translate-y-0.5"
                 >
-                  Ouvrir l annonce
+                  Ouvrir l’annonce
                 </TrackedSearchLink>
               </div>
 
@@ -295,8 +295,8 @@ export default async function CompanyOffersPage({ params, searchParams }: Props)
         </section>
       ) : (
         <section className="rounded-[1.75rem] border border-dashed border-line bg-card/70 p-8 text-sm leading-7 text-muted">
-          Aucune offre n a pu etre extraite depuis cette source pour le moment. Le plus
-          frequent est un portail de recrutement tres dynamique ou une page carriere sans liste
+          Aucune offre n’a pu être extraite depuis cette source pour le moment. Le plus
+          fréquent est un portail de recrutement très dynamique ou une page carrière sans liste
           directement accessible au HTML public.
         </section>
       )}

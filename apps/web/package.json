@@ -22,7 +22,8 @@
         "typecheck": "tsc --noEmit",
         "test:e2e": "npm run clean:next && npm run build && tsx --test \"tests/e2e/**/*.test.ts\"",
         "db:migrate:dev": "prisma migrate dev",
-        "db:migrate:deploy": "prisma migrate deploy"
+        "db:migrate:deploy": "prisma migrate deploy",
+        "vercel-build": "prisma migrate deploy && npm run build"
     },
     "dependencies": {
         "@prisma/client": "^6.19.2",

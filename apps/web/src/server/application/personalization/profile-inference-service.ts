@@ -371,7 +371,7 @@ function toDiscoveryOfferFromRawPayload(value: unknown): SearchDiscoveryOffer | 
             summary:
               typeof (offer.matching as { summary?: unknown }).summary === "string"
                 ? ((offer.matching as { summary: string }).summary as string)
-                : "Match non calcule.",
+                : "Match non calculé.",
             breakdown: Array.isArray((offer.matching as { breakdown?: unknown[] }).breakdown)
               ? ((offer.matching as { breakdown: SearchDiscoveryOffer["matching"]["breakdown"] }).breakdown as SearchDiscoveryOffer["matching"]["breakdown"])
               : [],
@@ -379,7 +379,7 @@ function toDiscoveryOfferFromRawPayload(value: unknown): SearchDiscoveryOffer | 
         : {
             score: 20,
             label: "Exploratoire",
-            summary: "Match non calcule.",
+            summary: "Match non calculé.",
             breakdown: [],
           },
   };

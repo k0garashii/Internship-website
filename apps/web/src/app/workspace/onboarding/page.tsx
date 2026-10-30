@@ -31,8 +31,8 @@ export default async function ProfileOnboardingPage() {
           Structure ton profil avant de lancer la recherche.
         </h1>
         <p className="app-copy mt-4 max-w-3xl">
-          Cette page rassemble les informations de base, les competences et les
-          contraintes utiles au matching. Les donnees sont sauvegardees et rechargees
+          Cette page rassemble les informations de base, les compétences et les
+          contraintes utiles au matching. Les données sont sauvegardées et rechargées
           depuis la base utilisateur.
         </p>
       </section>
@@ -41,6 +41,7 @@ export default async function ProfileOnboardingPage() {
         initialFullName={draft.fullName}
         initialEmail={draft.email}
         initialProfile={draft.profile}
+        initialResumeFileName={draft.resumeFileName}
       />
     </main>
   );

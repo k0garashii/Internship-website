@@ -22,12 +22,12 @@ const lifecycleLabels: Record<string, string> = {
 
 const feedbackLabels: Record<string, string> = {
   NOT_RELEVANT: "Non pertinente",
-  MAYBE: "A revoir",
+  MAYBE: "À revoir",
   FAVORITE: "Favorite",
-  APPLIED: "Candidature envoyee",
+  APPLIED: "Candidature envoyée",
   INTERVIEWING: "Entretien",
   REJECTED: "Refusee",
-  OFFER_ACCEPTED: "Offre acceptee",
+  OFFER_ACCEPTED: "Offre acceptée",
 };
 
 const workModeLabels: Record<string, string> = {
@@ -57,7 +57,7 @@ const runStatusLabels: Record<string, string> = {
 
 const draftStatusLabels: Record<string, string> = {
   DRAFT: "Brouillon",
-  READY_FOR_REVIEW: "A relire",
+  READY_FOR_REVIEW: "À relire",
   APPROVED: "Approuve",
   SENT: "Envoye",
   ARCHIVED: "Archive",
@@ -183,7 +183,7 @@ export default async function OfferDetailPage({ params }: PageProps) {
                 href="/workspace/search"
                 className="inline-flex items-center rounded-full border border-line px-4 py-2 font-mono text-[11px] uppercase tracking-[0.22em] text-muted transition hover:bg-white/70"
               >
-                Retour a la recherche
+                Retour à la recherche
               </Link>
               <div className="flex flex-wrap gap-2">
                 <span className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
@@ -247,7 +247,7 @@ export default async function OfferDetailPage({ params }: PageProps) {
                 }}
                 className="inline-flex items-center justify-center rounded-full bg-foreground px-5 py-3 text-sm font-medium text-white transition hover:-translate-y-0.5"
               >
-                Ouvrir l offre source
+                Ouvrir l’offre source
               </TrackedSearchLink>
               <Link
                 href="/workspace/drafts"
@@ -291,7 +291,7 @@ export default async function OfferDetailPage({ params }: PageProps) {
           {formatDateTime(offer.lastSeenAt) ? (
             <article className="rounded-[1.5rem] border border-line bg-card p-5 shadow-[0_18px_45px_rgba(31,41,55,0.05)]">
               <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-                Derniere vue
+                Dernière vue
               </p>
               <p className="mt-3 text-lg font-medium text-foreground">
                 {formatDateTime(offer.lastSeenAt)}
@@ -306,7 +306,7 @@ export default async function OfferDetailPage({ params }: PageProps) {
               Contenu
             </p>
             <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
-              Resume normalise et contexte collecte
+              Résumé normalisé et contexte collecte
             </h2>
             {offer.description ? (
               <p className="mt-4 text-sm leading-7 text-foreground">
@@ -318,7 +318,7 @@ export default async function OfferDetailPage({ params }: PageProps) {
               {offer.matchedQueryLabels.length > 0 ? (
                 <div className="rounded-[1.25rem] border border-line bg-white/70 p-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-muted">
-                    Requetes reliees
+                    Requêtes reliées
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {offer.matchedQueryLabels.map((item) => (
@@ -335,7 +335,7 @@ export default async function OfferDetailPage({ params }: PageProps) {
               {offer.matchedKeywords.length > 0 ? (
                 <div className="rounded-[1.25rem] border border-line bg-white/70 p-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-muted">
-                    Mots cles retrouves
+                    Mots clés retrouvés
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {offer.matchedKeywords.map((item) => (
@@ -353,12 +353,12 @@ export default async function OfferDetailPage({ params }: PageProps) {
 
             {offer.normalizedOpportunity ? (
               <div className="mt-6 rounded-[1.25rem] border border-line bg-white/70 p-4 text-sm leading-7 text-foreground">
-                Version normalisee: {offer.normalizedOpportunity.sourceLabel}
+                Version normalisée: {offer.normalizedOpportunity.sourceLabel}
                 {offer.normalizedOpportunity.signal
                   ? ` / signal ${offer.normalizedOpportunity.signal}`
                   : ""}
                 {formatDateTime(offer.normalizedOpportunity.capturedAt)
-                  ? `. Capturee le ${formatDateTime(offer.normalizedOpportunity.capturedAt)}.`
+                  ? `. Capturée le ${formatDateTime(offer.normalizedOpportunity.capturedAt)}.`
                   : "."}
               </div>
             ) : null}
@@ -437,7 +437,7 @@ export default async function OfferDetailPage({ params }: PageProps) {
                     <p className="mt-3 text-sm font-medium text-foreground">{entry.searchRunLabel}</p>
                     {formatDateTime(entry.discoveredAt) ? (
                       <p className="mt-1 text-sm leading-7 text-muted">
-                        Decouverte le {formatDateTime(entry.discoveredAt)}
+                        Découverte le {formatDateTime(entry.discoveredAt)}
                       </p>
                     ) : null}
                     {entry.matchExplanation ? (
@@ -449,7 +449,7 @@ export default async function OfferDetailPage({ params }: PageProps) {
                 ))
               ) : (
                 <p className="text-sm leading-7 text-muted">
-                  Aucun historique detaille de recherche n est disponible.
+                  Aucun historique détaillé de recherche n’est disponible.
                 </p>
               )}
             </div>
@@ -474,7 +474,7 @@ export default async function OfferDetailPage({ params }: PageProps) {
                       </div>
                       {formatDateTime(entry.updatedAt) ? (
                         <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted">
-                          Mis a jour le {formatDateTime(entry.updatedAt)}
+                          Mis à jour le {formatDateTime(entry.updatedAt)}
                         </p>
                       ) : null}
                       {entry.note ? (
@@ -486,7 +486,7 @@ export default async function OfferDetailPage({ params }: PageProps) {
                   ))
                 ) : (
                   <p className="text-sm leading-7 text-muted">
-                    Aucun feedback n a encore ete saisi sur cette offre.
+                    Aucun feedback n’a encore été saisi sur cette offre.
                   </p>
                 )}
               </div>
@@ -525,14 +525,14 @@ export default async function OfferDetailPage({ params }: PageProps) {
                       ) : null}
                       {formatDateTime(entry.updatedAt) ? (
                         <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted">
-                          Mis a jour le {formatDateTime(entry.updatedAt)}
+                          Mis à jour le {formatDateTime(entry.updatedAt)}
                         </p>
                       ) : null}
                     </div>
                   ))
                 ) : (
                   <p className="text-sm leading-7 text-muted">
-                    Aucun brouillon n a encore ete genere pour cette offre.
+                    Aucun brouillon n’a encore été généré pour cette offre.
                   </p>
                 )}
               </div>
@@ -540,12 +540,12 @@ export default async function OfferDetailPage({ params }: PageProps) {
 
             <article className="rounded-[1.75rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] md:p-8">
               <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-                Sources reliees
+                Sources reliées
               </p>
               <p className="mt-4 text-sm leading-7 text-foreground">
                 {offer.deduplication.sourceUrls.length} URL source,{" "}
                 {offer.deduplication.sourceOfferIds.length} identifiant(s) externes et{" "}
-                {offer.deduplication.providers.length} source(s) rattachee(s) a cette offre.
+                {offer.deduplication.providers.length} source(s) rattachée(s) à cette offre.
               </p>
             </article>
           </div>

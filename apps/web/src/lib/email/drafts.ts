@@ -1,10 +1,13 @@
 import {
+  DraftKind,
   DraftStatus,
   EmailDeliveryOperation,
   EmailDeliveryLogStatus,
 } from "@prisma/client";
 import { z } from "zod";
 
+import { generateGeminiJson, getGeminiApiKey } from "@/lib/ai/gemini";
+import { markApplicationSent } from "@/lib/applications/pipeline";
 import { db } from "@/lib/db";
 import { createEmailDeliveryLog } from "@/lib/email/delivery-logs";
 import {
@@ -20,6 +23,7 @@ import {
 import {
   buildOfferEmailPersonalizationPrompt,
   type OfferEmailPersonalizationPrompt,
+  type OfferDraftKind,
 } from "@/lib/email/personalization-prompt";
 import { logServiceError } from "@/lib/observability/error-logging";
 import { buildSignalsFromOfferRecord, recordSearchBehaviorEvent } from "@/server/application/personalization/search-behavior-service";
@@ -50,6 +54,7 @@ const draftDeliveryInputSchema = z
 
 export type GeneratedEmailDraft = z.infer<typeof generatedDraftSchema> & {
   draftId: string;
+  kind: OfferDraftKind;
   provider: "gemini" | "fallback";
   generatedBy: string;
   personalizationSummary: string;
@@ -57,6 +62,7 @@ export type GeneratedEmailDraft = z.infer<typeof generatedDraftSchema> & {
 
 export type EmailDraftListItem = {
   id: string;
+  kind: DraftKind;
   status: DraftStatus;
   recipientEmail: string | null;
   subject: string | null;
@@ -108,6 +114,7 @@ export class EmailDraftDeliveryError extends Error {
 
 type DraftSelectPayload = {
   id: string;
+  kind: DraftKind;
   status: DraftStatus;
   recipientEmail: string | null;
   subject: string | null;
@@ -130,6 +137,7 @@ type DraftSelectPayload = {
 function toListItem(draft: DraftSelectPayload): EmailDraftListItem {
   return {
     id: draft.id,
+    kind: draft.kind,
     status: draft.status,
     recipientEmail: draft.recipientEmail,
     subject: draft.subject,
@@ -145,15 +153,6 @@ function toListItem(draft: DraftSelectPayload): EmailDraftListItem {
   };
 }
 
-function getGeminiApiKey() {
-  return (
-    process.env.GEMINI_API_KEY?.trim() ||
-    process.env.GOOGLE_API_KEY?.trim() ||
-    process.env.GOOGLE_GENAI_API_KEY?.trim() ||
-    null
-  );
-}
-
 function buildPersonalizationSummary(
   prompt: OfferEmailPersonalizationPrompt,
   matchExplanation: string | null,
@@ -166,7 +165,43 @@ function buildPersonalizationSummary(
   return keyLines.join(" | ").slice(0, 500);
 }
 
-function buildFallbackDraft(prompt: OfferEmailPersonalizationPrompt) {
+function buildFallbackDraft(
+  prompt: OfferEmailPersonalizationPrompt,
+  kind: OfferDraftKind,
+  offer: { title: string; companyName: string },
+) {
+  if (kind === "FOLLOW_UP") {
+    return generatedDraftSchema.parse({
+      subject: `Relance – candidature ${offer.title}`.slice(0, 160),
+      body: [
+        "Bonjour,",
+        "",
+        `Je me permets de revenir vers vous au sujet de ma candidature au poste de ${offer.title} chez ${offer.companyName}.`,
+        "Ce poste m’intéresse toujours beaucoup et je reste disponible pour un échange afin de vous présenter plus en détail ma motivation.",
+        "",
+        "Je vous remercie par avance pour votre retour.",
+      ].join("\n"),
+    });
+  }
+
+  if (kind === "COVER_LETTER") {
+    return generatedDraftSchema.parse({
+      subject: `Candidature au poste de ${offer.title}`.slice(0, 160),
+      body: [
+        "Madame, Monsieur,",
+        "",
+        `Votre offre de ${offer.title} chez ${offer.companyName} a retenu toute mon attention.`,
+        "[Explique ici ce qui t’attire dans l’entreprise et dans le poste.]",
+        "",
+        "[Présente deux ou trois expériences ou compétences de ton profil qui répondent directement aux attentes de l’offre.]",
+        "",
+        "Je serais heureux d’échanger avec vous pour vous présenter ma motivation lors d’un entretien.",
+        "",
+        "Je vous prie d’agréer, Madame, Monsieur, l’expression de mes salutations distinguées.",
+      ].join("\n"),
+    });
+  }
+
   const body = [
     "Bonjour,",
     "",
@@ -184,69 +219,29 @@ function buildFallbackDraft(prompt: OfferEmailPersonalizationPrompt) {
 }
 
 async function generateDraftWithGemini(prompt: OfferEmailPersonalizationPrompt, apiKey: string) {
-  const model = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-goog-api-key": apiKey,
+  const { model, data } = await generateGeminiJson({
+    apiKey,
+    prompt: prompt.userPrompt,
+    systemPrompt: prompt.systemPrompt,
+    responseJsonSchema: {
+      type: "object",
+      properties: {
+        subject: {
+          type: "string",
+          description: "Email subject line in French.",
+        },
+        body: {
+          type: "string",
+          description: "Email body in French, plain text only.",
+        },
       },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: prompt.systemPrompt }],
-        },
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: prompt.userPrompt }],
-          },
-        ],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseJsonSchema: {
-            type: "object",
-            properties: {
-              subject: {
-                type: "string",
-                description: "Email subject line in French.",
-              },
-              body: {
-                type: "string",
-                description: "Email body in French, plain text only.",
-              },
-            },
-            required: ["subject", "body"],
-          },
-        },
-      }),
+      required: ["subject", "body"],
     },
-  );
-
-  if (!response.ok) {
-    throw new Error(`Gemini request failed with status ${response.status}`);
-  }
-
-  const payload = (await response.json()) as {
-    candidates?: Array<{
-      content?: {
-        parts?: Array<{
-          text?: string;
-        }>;
-      };
-    }>;
-  };
-
-  const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!text) {
-    throw new Error("Gemini returned no draft payload");
-  }
+  });
 
   return {
     model,
-    draft: generatedDraftSchema.parse(JSON.parse(text)),
+    draft: generatedDraftSchema.parse(data),
   };
 }
 
@@ -303,6 +298,7 @@ async function getDraftForListItem(userId: string, draftId: string) {
       personalizationSummary: true,
       generatedBy: true,
       deliveryProvider: true,
+      kind: true,
       gmailDraftId: true,
       gmailMessageId: true,
       gmailThreadId: true,
@@ -327,6 +323,7 @@ async function getDraftForListItem(userId: string, draftId: string) {
 
 type OwnedDraft = {
   id: string;
+  kind: DraftKind;
   jobOfferId: string | null;
   status: DraftStatus;
   recipientEmail: string | null;
@@ -343,6 +340,7 @@ async function getOwnedDraft(userId: string, draftId: string): Promise<OwnedDraf
     },
     select: {
       id: true,
+      kind: true,
       jobOfferId: true,
       status: true,
       recipientEmail: true,
@@ -410,15 +408,16 @@ async function resolveDraftDeliveryContext(
 export async function generateOfferEmailDraft(
   userId: string,
   jobOfferId: string,
+  kind: OfferDraftKind = "APPLICATION",
 ): Promise<GeneratedEmailDraft> {
   const workspaceId = await getRequiredActiveWorkspaceIdForUser(userId);
   const context = await buildOfferGeminiContext(userId, jobOfferId);
-  const prompt = buildOfferEmailPersonalizationPrompt(context);
+  const prompt = buildOfferEmailPersonalizationPrompt(context, kind);
   const apiKey = getGeminiApiKey();
 
   let generatedBy = "fallback-template";
   let provider: GeneratedEmailDraft["provider"] = "fallback";
-  let draft = buildFallbackDraft(prompt);
+  let draft = buildFallbackDraft(prompt, kind, context.offer);
 
   if (apiKey) {
     try {
@@ -451,6 +450,7 @@ export async function generateOfferEmailDraft(
       userId,
       workspaceId,
       jobOfferId,
+      kind: DraftKind[kind],
       status: DraftStatus.DRAFT,
       recipientEmail,
       subject: draft.subject,
@@ -495,6 +495,7 @@ export async function generateOfferEmailDraft(
 
   return {
     draftId: savedDraft.id,
+    kind,
     subject: draft.subject,
     body: draft.body,
     provider,
@@ -520,6 +521,7 @@ export async function listEmailDraftsForUser(userId: string): Promise<EmailDraft
       personalizationSummary: true,
       generatedBy: true,
       deliveryProvider: true,
+      kind: true,
       gmailDraftId: true,
       gmailMessageId: true,
       gmailThreadId: true,
@@ -582,6 +584,7 @@ export async function updateEmailDraft(
       personalizationSummary: true,
       generatedBy: true,
       deliveryProvider: true,
+      kind: true,
       gmailDraftId: true,
       gmailMessageId: true,
       gmailThreadId: true,
@@ -784,6 +787,10 @@ export async function sendEmailDraftWithGmail(
             },
           },
         );
+
+        if (draft.kind === DraftKind.APPLICATION) {
+          await markApplicationSent(userId, offer.id);
+        }
       }
     }
   } catch (error) {

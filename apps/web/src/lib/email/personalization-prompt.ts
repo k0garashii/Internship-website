@@ -5,6 +5,46 @@ export type OfferEmailPersonalizationPrompt = {
   userPrompt: string;
 };
 
+export type OfferDraftKind = "APPLICATION" | "FOLLOW_UP" | "COVER_LETTER";
+
+const DRAFT_KIND_INSTRUCTIONS: Record<
+  OfferDraftKind,
+  { role: string; output: string; task: string[] }
+> = {
+  APPLICATION: {
+    role: "Tu es un assistant de redaction d emails de candidature.",
+    output:
+      "BODY: le corps de l email sur quelques paragraphes courts, sans markdown, sans puces, sans signature inventee.",
+    task: [
+      "Redige un email de candidature concis et personnalise pour cette offre.",
+      "Ne promets pas de pieces jointes non confirmees.",
+      "Ne fais reference qu aux informations presentes ci-dessus.",
+      "Mets en avant au maximum trois axes de correspondance vraiment solides.",
+    ],
+  },
+  FOLLOW_UP: {
+    role: "Tu es un assistant de redaction d emails de relance de candidature.",
+    output:
+      "BODY: un email de relance de 80 a 130 mots, sans markdown, sans puces, sans signature inventee.",
+    task: [
+      "Redige un email de relance poli pour une candidature deja envoyee a cette offre et restee sans reponse.",
+      "Rappelle le poste vise, reaffirme la motivation en une ou deux phrases precises et propose un echange.",
+      "Ne reproche pas l absence de reponse et ne repete pas toute la candidature.",
+      "Ne fais reference qu aux informations presentes ci-dessus.",
+    ],
+  },
+  COVER_LETTER: {
+    role: "Tu es un assistant de redaction de lettres de motivation.",
+    output:
+      "BODY: une lettre de motivation de 250 a 350 mots en trois ou quatre paragraphes, sans markdown, sans puces, sans adresse postale ni signature inventee. SUBJECT: une ligne d objet de la forme Candidature au poste de ...",
+    task: [
+      "Redige une lettre de motivation personnalisee pour cette offre.",
+      "Structure: accroche liee a l entreprise ou au poste, ce que le candidat apporte avec des elements concrets du profil, motivation pour ce poste, conclusion proposant un entretien.",
+      "Ne fais reference qu aux informations presentes ci-dessus et n invente aucune experience.",
+    ],
+  },
+};
+
 function formatList(values: string[]) {
   return values.length > 0 ? values.join(", ") : "Aucun element fourni";
 }
@@ -15,11 +55,14 @@ function formatNullable(value: string | null) {
 
 export function buildOfferEmailPersonalizationPrompt(
   context: OfferGeminiContext,
+  kind: OfferDraftKind = "APPLICATION",
 ): OfferEmailPersonalizationPrompt {
+  const instructions = DRAFT_KIND_INSTRUCTIONS[kind];
+
   return {
     systemPrompt: [
-      "Tu es un assistant de redaction d emails de candidature.",
-      "Tu rediges en francais un email professionnel, sobre, concis et credible.",
+      instructions.role,
+      "Tu rediges en francais un texte professionnel, sobre, concis et credible.",
       "Tu n inventes aucun fait, aucune competence, aucune experience, aucun resultat ni aucun lien absent du contexte fourni.",
       "Tu ne mentionnes pas Gemini, l IA, un score interne ou le fonctionnement du systeme.",
       "Tu adaptes le ton a une candidature stage / jeune profil: poli, direct, humble, oriente contribution.",
@@ -28,7 +71,7 @@ export function buildOfferEmailPersonalizationPrompt(
       "Si une information importante manque, tu l omets plutot que de la supposer.",
       "La sortie doit contenir exactement deux sections:",
       "SUBJECT: une ligne d objet email.",
-      "BODY: le corps de l email sur quelques paragraphes courts, sans markdown, sans puces, sans signature inventee.",
+      instructions.output,
     ].join(" "),
     userPrompt: [
       "Contexte candidat",
@@ -48,6 +91,15 @@ export function buildOfferEmailPersonalizationPrompt(
       `Mots cles: ${formatList(context.candidate.searchKeywords)}`,
       `Types de contrat: ${formatList(context.candidate.employmentTypes)}`,
       `Notes de preferences: ${formatNullable(context.candidate.preferencesNotes)}`,
+      `Langues: ${formatList(context.candidate.languages)}`,
+      `Permis de conduire: ${
+        context.candidate.hasDrivingLicense === null
+          ? "Non renseigne"
+          : context.candidate.hasDrivingLicense
+            ? "Oui"
+            : "Non"
+      }`,
+      `Extrait du CV: ${formatNullable(context.candidate.resumeExcerpt)}`,
       `LinkedIn: ${formatNullable(context.candidate.links.linkedinUrl)}`,
       `GitHub: ${formatNullable(context.candidate.links.githubUrl)}`,
       `Portfolio: ${formatNullable(context.candidate.links.portfolioUrl)}`,
@@ -77,10 +129,7 @@ export function buildOfferEmailPersonalizationPrompt(
       `Shortlist: ${context.signals.isShortlisted ? "Oui" : "Non"}`,
       "",
       "Tache demandee",
-      "Redige un email de candidature concis et personnalise pour cette offre.",
-      "Ne promets pas de pieces jointes non confirmees.",
-      "Ne fais reference qu aux informations presentes ci-dessus.",
-      "Mets en avant au maximum trois axes de correspondance vraiment solides.",
+      ...instructions.task,
     ].join("\n"),
   };
 }

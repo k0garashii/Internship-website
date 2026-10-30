@@ -135,7 +135,7 @@ export function SignUpForm() {
             value={formState.password}
             onChange={(event) => updateField("password", event.target.value)}
             className="w-full rounded-2xl border border-line bg-white/80 px-4 py-3 outline-none transition focus:border-slate-900"
-            placeholder="10 caracteres minimum"
+            placeholder="10 caractères minimum"
             autoComplete="new-password"
             required
           />
@@ -172,7 +172,7 @@ export function SignUpForm() {
       </div>
 
       <div className="rounded-[1.25rem] border border-dashed border-line bg-white/50 p-4 text-sm leading-7 text-muted">
-        Le mot de passe doit contenir au moins 10 caracteres, avec au moins une
+        Le mot de passe doit contenir au moins 10 caractères, avec au moins une
         lettre et un chiffre.
       </div>
 
@@ -187,7 +187,7 @@ export function SignUpForm() {
         disabled={isSubmitting}
         className="inline-flex w-full items-center justify-center rounded-full bg-foreground px-5 py-3 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {isSubmitting ? "Creation du compte..." : "Creer mon espace personnel"}
+        {isSubmitting ? "Création du compte..." : "Créer mon espace personnel"}
       </button>
     </form>
   );

@@ -246,7 +246,7 @@ export function classifyPublicJobSource(url: string): PublicJobSource {
   if (hasCareerSignal(normalized)) {
     return {
       id: "company-careers",
-      label: "Page carriere",
+      label: "Page carrière",
       kind: "COMPANY_CAREERS",
       atsProvider: null,
     };

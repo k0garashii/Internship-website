@@ -57,7 +57,7 @@ export function WorkspaceProviderHealthPanel({ providerHealth }: Props) {
         Connexions
       </p>
       <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
-        Services relies a l espace
+        Services reliés à l’espace
       </h2>
 
       <div className="mt-5 space-y-4">
@@ -91,8 +91,8 @@ export function WorkspaceProviderHealthPanel({ providerHealth }: Props) {
           </p>
           <p className="mt-1 text-xs text-muted">
             {providerHealth.gmail.lastSyncError
-              ? `Derniere erreur: ${providerHealth.gmail.lastSyncError}`
-              : `Derniere synchro: ${providerHealth.gmail.lastSyncedAt ?? "jamais"}`}
+              ? `Dernière erreur: ${providerHealth.gmail.lastSyncError}`
+              : `Dernière synchro: ${providerHealth.gmail.lastSyncedAt ?? "jamais"}`}
           </p>
         </div>
 
@@ -101,7 +101,7 @@ export function WorkspaceProviderHealthPanel({ providerHealth }: Props) {
             <p className="text-sm font-medium text-foreground">Abonnement</p>
             <HealthBadge
               ok={providerHealth.billing.configured}
-              label={providerHealth.billing.configured ? "Pret" : "A brancher"}
+              label={providerHealth.billing.configured ? "Pret" : "À brancher"}
             />
           </div>
           <p className="mt-2 text-sm text-muted">
@@ -116,7 +116,7 @@ export function WorkspaceProviderHealthPanel({ providerHealth }: Props) {
             <p className="text-sm font-medium text-foreground">Jobs applicatifs</p>
             <HealthBadge
               ok={providerHealth.jobs.failedCount === 0}
-              label={providerHealth.jobs.failedCount === 0 ? "Sain" : "A surveiller"}
+              label={providerHealth.jobs.failedCount === 0 ? "Sain" : "À surveiller"}
             />
           </div>
           <p className="mt-2 text-sm text-muted">

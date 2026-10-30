@@ -13,22 +13,22 @@ type Props = {
 
 function getConnectionStateLabel(snapshot: GmailConnectionSnapshot) {
   if (!snapshot.source) {
-    return "Non connecte";
+    return "Non connecté";
   }
 
   if (snapshot.source.status === "ERROR") {
-    return "Connecte, synchro en erreur";
+    return "Connecté, synchro en erreur";
   }
 
   if (snapshot.source.status === "DISABLED") {
-    return "Connexion desactivee";
+    return "Connexion désactivée";
   }
 
   if (snapshot.configured) {
     return "Connecte";
   }
 
-  return "Connecte, autorisations a completer";
+  return "Connecté, autorisations à compléter";
 }
 
 function formatDateTime(value: string | null) {
@@ -48,9 +48,9 @@ function formatDateTime(value: string | null) {
 function getReplyStatusLabel(status: GmailConnectionSnapshot["detectedReplies"][number]["status"]) {
   switch (status) {
     case "OUTBOUND_ONLY":
-      return "Sortant detecte";
+      return "Sortant détecté";
     case "RESPONSE_RECEIVED":
-      return "Reponse recue";
+      return "Réponse reçue";
     case "INTERVIEW":
       return "Entretien probable";
     case "REJECTION":
@@ -102,12 +102,12 @@ export function GmailMailboxPanel({ initialSnapshot }: Props) {
         <div className="space-y-3">
           <p className="app-kicker">Connexion Gmail</p>
           <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-            Lire la boite pour suivre les candidatures reelles.
+            Lire la boîte pour suivre les candidatures réelles.
           </h2>
           <p className="text-sm leading-7 text-foreground">
-            Cette connexion sert a relire les messages recus et envoyes dans Gmail afin
-            de detecter les fils de candidature, meme si le mail initial n a pas ete
-            envoye depuis l application.
+            Cette connexion sert à relire les messages reçus et envoyés dans Gmail afin
+            de détecter les fils de candidature, même si le mail initial n’a pas été
+            envoyé depuis l’application.
           </p>
         </div>
 
@@ -147,8 +147,8 @@ export function GmailMailboxPanel({ initialSnapshot }: Props) {
         {source ? (
           <div className="rounded-[1rem] border border-line bg-white/70 px-4 py-4 text-sm leading-7 text-foreground">
             {source.hasSendScope
-              ? "Les autorisations Gmail sont completes. Cette page garde maintenant la synchro et la lecture des fils utiles."
-              : "L activation brouillons et envoi se fait maintenant sur la page precedente, juste apres la connexion Gmail."}
+              ? "Les autorisations Gmail sont complètes. Cette page garde maintenant la synchro et la lecture des fils utiles."
+              : "L’activation brouillons et envoi se fait maintenant sur la page précédente, juste après la connexion Gmail."}
           </div>
         ) : null}
       </aside>
@@ -158,10 +158,10 @@ export function GmailMailboxPanel({ initialSnapshot }: Props) {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-                Messages recents
+                Messages récents
               </p>
               <h3 className="mt-3 text-xl font-semibold tracking-tight text-foreground">
-                Ce qui a ete indexe dans la boite.
+                Ce qui a été indexé dans la boîte.
               </h3>
             </div>
             {source ? (
@@ -184,10 +184,10 @@ export function GmailMailboxPanel({ initialSnapshot }: Props) {
                         {message.subject ?? "Sans sujet"}
                       </p>
                       <p className="text-sm text-muted">
-                        {message.direction === "OUTBOUND" ? "Sortant vers" : "Recu de"}{" "}
+                        {message.direction === "OUTBOUND" ? "Sortant vers" : "Reçu de"}{" "}
                         {message.direction === "OUTBOUND"
                           ? message.toEmails[0] ?? "destinataire inconnu"
-                          : message.fromEmail ?? "expediteur inconnu"}
+                          : message.fromEmail ?? "expéditeur inconnu"}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -212,7 +212,7 @@ export function GmailMailboxPanel({ initialSnapshot }: Props) {
               ))
             ) : (
               <div className="rounded-[1.25rem] border border-dashed border-line bg-white/70 p-5 text-sm leading-7 text-muted">
-                Aucun message Gmail n est encore synchronise.
+                Aucun message Gmail n’est encore synchronisé.
               </div>
             )}
           </div>

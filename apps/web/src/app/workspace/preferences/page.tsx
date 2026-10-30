@@ -25,10 +25,10 @@ export default async function PreferencesPage() {
     <main className="flex min-h-full flex-col gap-8">
       <section className="app-hero p-6 md:p-8">
         <p className="app-kicker">
-          Preferences de recherche
+          Préférences de recherche
         </p>
         <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-foreground md:text-6xl">
-         Roles, zone et domaine de recherche.
+         Rôles, zone et domaine de recherche.
         </h1>
       </section>
 
@@ -60,6 +60,10 @@ export default async function PreferencesPage() {
           salaryExpectationMax: draft.profile.salaryExpectationMax,
           visaNeedsSponsorship: draft.profile.visaNeedsSponsorship,
           preferencesNotes: draft.profile.preferencesNotes,
+          languages: draft.profile.languages,
+          hasDrivingLicense: draft.profile.hasDrivingLicense,
+          mobilityRadiusKm: draft.profile.mobilityRadiusKm,
+          excludedSectors: draft.profile.excludedSectors,
         }}
         initialDomains={draft.domains}
       />

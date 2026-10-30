@@ -31,6 +31,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // pdf-parse loads pdf.js and its worker at runtime; bundling it breaks PDF reading.
+  serverExternalPackages: ["pdf-parse"],
   async headers() {
     return [
       {

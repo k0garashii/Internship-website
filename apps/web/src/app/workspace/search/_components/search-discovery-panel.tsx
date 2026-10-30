@@ -22,7 +22,7 @@ const contractLabels: Record<string, string> = {
 const remoteLabels: Record<string, string> = {
   fulltime: "Remote complet",
   partial: "Hybride",
-  punctual: "Teletravail ponctuel",
+  punctual: "Télétravail ponctuel",
   no: "Sur site",
 };
 
@@ -108,7 +108,7 @@ export function SearchDiscoveryPanel({ disabled }: Props) {
       <aside className="space-y-6 rounded-[2rem] border border-line bg-card p-6 shadow-[0_18px_45px_rgba(31,41,55,0.05)] md:p-8">
         <div className="space-y-3">
           <p className="app-kicker">
-            Execution
+            Exécution
           </p>
           <h2 className="text-2xl font-semibold tracking-tight text-foreground">
             Lancer la collecte publique
@@ -132,7 +132,7 @@ export function SearchDiscoveryPanel({ disabled }: Props) {
 
         {result ? (
           <div aria-live="polite" className="text-sm leading-7 text-muted">
-            {`${result.offerCount} offre(s) previsualisee(s), ${result.normalizedOffers.length} opportunite(s) normalisee(s) et ${result.persistence?.persistedOfferCount ?? 0} offre(s) persistee(s) apres ${result.executedQueryCount} requete(s).`}
+            {`${result.offerCount} offre(s) prévisualisée(s), ${result.normalizedOffers.length} opportunité(s) normalisée(s) et ${result.persistence?.persistedOfferCount ?? 0} offre(s) persistée(s) après ${result.executedQueryCount} requête(s).`}
           </div>
         ) : null}
 
@@ -148,11 +148,11 @@ export function SearchDiscoveryPanel({ disabled }: Props) {
         {result ? (
           <div className="space-y-4 rounded-[1.5rem] border border-line bg-white/70 p-5">
             <div>
-              <p className="text-sm text-muted">Resume</p>
+              <p className="text-sm text-muted">Résumé</p>
               <p className="mt-2 text-sm leading-7 text-foreground">{result.summary}</p>
             </div>
             <div>
-              <p className="text-sm text-muted">Plan utilise</p>
+              <p className="text-sm text-muted">Plan utilisé</p>
               <p className="mt-2 text-sm leading-7 text-foreground">{result.planSummary}</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -169,13 +169,13 @@ export function SearchDiscoveryPanel({ disabled }: Props) {
                 </div>
               ) : null}
               <div className="surface-muted rounded-[1.25rem] p-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted">Version normalisee</p>
+                <p className="text-xs uppercase tracking-[0.16em] text-muted">Version normalisée</p>
                 <p className="mt-2 text-base font-medium text-foreground">
-                  {result.normalizedOffers.length} opportunite(s)
+                  {result.normalizedOffers.length} opportunité(s)
                 </p>
               </div>
               <div className="surface-muted rounded-[1.25rem] p-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-muted">Offres enregistrees</p>
+                <p className="text-xs uppercase tracking-[0.16em] text-muted">Offres enregistrées</p>
                 <p className="mt-2 text-base font-medium text-foreground">
                   {result.persistence?.persistedOfferCount ?? 0} offre(s)
                 </p>
@@ -185,7 +185,7 @@ export function SearchDiscoveryPanel({ disabled }: Props) {
               <div className="surface-muted rounded-[1.25rem] p-4 text-sm leading-7 text-foreground">
                 Run en base: <span className="font-medium">{result.persistence.searchRunId}</span>.
                 {` ${result.persistence.createdOfferCount}`} nouvelle(s) offre(s),
-                {` ${result.persistence.updatedOfferCount}`} deja vue(s) remise(s) a jour.
+                {` ${result.persistence.updatedOfferCount}`} déjà vue(s) remise(s) à jour.
               </div>
             ) : null}
             {result.warnings.length > 0 ? (
@@ -233,7 +233,7 @@ export function SearchDiscoveryPanel({ disabled }: Props) {
                         Match {offer.matching.score}/100
                       </span>
                       <span className="status-pill status-pill-accent">
-                        Priorite {offer.priorityScore}
+                        Priorité {offer.priorityScore}
                       </span>
                     </div>
                     <div>
@@ -249,7 +249,7 @@ export function SearchDiscoveryPanel({ disabled }: Props) {
                   <div className="flex flex-col items-start gap-3 lg:items-end">
                     {publishedAtLabel ? (
                       <span className="text-sm text-muted">
-                        Publiee le {publishedAtLabel}
+                        Publiée le {publishedAtLabel}
                       </span>
                     ) : null}
                     <a
@@ -277,7 +277,7 @@ export function SearchDiscoveryPanel({ disabled }: Props) {
                       }}
                       className="inline-flex items-center justify-center rounded-full bg-foreground px-5 py-3 text-sm font-medium text-white transition hover:-translate-y-0.5"
                     >
-                      Ouvrir l offre
+                      Ouvrir l’offre
                     </a>
                   </div>
                 </div>
@@ -285,7 +285,7 @@ export function SearchDiscoveryPanel({ disabled }: Props) {
                 <div className={summaryText ? "mt-5 grid gap-4 xl:grid-cols-[1fr_0.78fr]" : "mt-5"}>
                   {summaryText ? (
                     <div className="space-y-3">
-                      <p className="text-sm font-medium text-foreground">Resume source</p>
+                      <p className="text-sm font-medium text-foreground">Résumé source</p>
                       <p className="text-sm leading-7 text-foreground">{summaryText}</p>
                     </div>
                   ) : null}
@@ -307,7 +307,7 @@ export function SearchDiscoveryPanel({ disabled }: Props) {
                     {offer.matchedKeywords.length > 0 ? (
                       <>
                         <p className="text-xs uppercase tracking-[0.16em] text-muted">
-                          Mots cles retrouves
+                          Mots clés retrouvés
                         </p>
                         <p className="text-sm leading-7 text-foreground">
                           {offer.matchedKeywords.join(", ")}
@@ -350,7 +350,7 @@ export function SearchDiscoveryPanel({ disabled }: Props) {
           })
         ) : (
           <article className="rounded-[1.75rem] border border-dashed border-line bg-card/70 p-8 text-sm leading-7 text-muted">
-            Lance la recherche pour voir les premieres offres dedupliquees correspondant
+            Lance la recherche pour voir les premières offres dédupliquées correspondant
             au profil courant.
           </article>
         )}

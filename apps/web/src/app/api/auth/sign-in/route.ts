@@ -85,7 +85,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json(
         {
-          error: "Trop de tentatives. Reessayez plus tard.",
+          error: "Trop de tentatives. Réessaie plus tard.",
         },
         buildRateLimitResponseInit(error),
       );

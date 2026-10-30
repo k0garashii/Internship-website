@@ -11,7 +11,7 @@ type Props = {
 
 const decisions = [
   { value: "FAVORITE", label: "Pertinente" },
-  { value: "MAYBE", label: "A revoir" },
+  { value: "MAYBE", label: "À revoir" },
   { value: "NOT_RELEVANT", label: "Non pertinente" },
 ] as const;
 
@@ -52,7 +52,7 @@ export function OfferFeedbackControls({
     const payload = (await response.json()) as FeedbackResponse;
 
     if (!response.ok) {
-      setError(payload.error ?? "Impossible d enregistrer le feedback");
+      setError(payload.error ?? "Impossible d’enregistrer le feedback");
       setIsLoading(false);
       return;
     }
@@ -68,7 +68,7 @@ export function OfferFeedbackControls({
       <div>
         <p className="text-sm font-medium text-foreground">Feedback offre</p>
         <p className="mt-1 text-sm leading-7 text-muted">
-          Marque rapidement l offre selon sa pertinence puis ajoute une note si besoin.
+          Marque rapidement l’offre selon sa pertinence puis ajoute une note si besoin.
         </p>
       </div>
 

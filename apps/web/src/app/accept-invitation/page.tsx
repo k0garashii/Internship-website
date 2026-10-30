@@ -36,7 +36,7 @@ export default async function AcceptInvitationPage({
             Invitation introuvable
           </h1>
           <p className="mt-3 text-sm leading-7 text-muted">
-            Le lien d invitation n existe plus ou n est pas valide.
+            Le lien d’invitation n’existe plus ou n’est pas valide.
           </p>
         </div>
       </main>
@@ -53,22 +53,22 @@ export default async function AcceptInvitationPage({
           Rejoindre {invitation.workspaceName}
         </h1>
         <p className="mt-3 text-sm leading-7 text-muted">
-          Cette invitation donne acces au workspace <strong>{invitation.workspaceSlug}</strong>{" "}
-          avec le role <strong>{invitation.role}</strong>.
+          Cette invitation donne accès au workspace <strong>{invitation.workspaceSlug}</strong>{" "}
+          avec le rôle <strong>{invitation.role}</strong>.
         </p>
         <p className="mt-2 text-sm leading-7 text-muted">
-          Adresse invitee: <strong>{invitation.email}</strong>
+          Adresse invitée: <strong>{invitation.email}</strong>
         </p>
 
         {!viewer ? (
           <div className="mt-6 rounded-[1.25rem] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-            Connecte-toi d abord avec l adresse invitee, puis reviens sur ce lien.
+            Connecte-toi d’abord avec l’adresse invitée, puis reviens sur ce lien.
           </div>
         ) : null}
 
         {invitation.isExpired || invitation.status !== "PENDING" ? (
           <div className="mt-6 rounded-[1.25rem] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-            Cette invitation n est plus acceptables dans son etat actuel.
+            Cette invitation n’est plus acceptable dans son état actuel.
           </div>
         ) : null}
 

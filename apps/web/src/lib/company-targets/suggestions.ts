@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { generateGeminiJson, getGeminiApiKey } from "@/lib/ai/gemini";
 import {
   normalizeCompanyName,
   type CompanyWatchlistFile,
@@ -464,16 +465,12 @@ async function generateWithGemini(
   companyWatchlist: CompanyWatchlistFile,
   inferredPreferences: InferredSearchPreference[] = [],
 ) {
-  const apiKey =
-    process.env.GEMINI_API_KEY?.trim() ||
-    process.env.GOOGLE_API_KEY?.trim() ||
-    process.env.GOOGLE_GENAI_API_KEY?.trim();
+  const apiKey = getGeminiApiKey();
 
   if (!apiKey) {
     throw new Error("Gemini API key is missing");
   }
 
-  const model = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
   const prompt = buildCompanyTargetPrompt(personalProfile, searchTargets, companyWatchlist);
   const enrichedPrompt = [
     prompt,
@@ -490,78 +487,42 @@ async function generateWithGemini(
       2,
     ),
   ].join("\n");
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: enrichedPrompt }],
-          },
-        ],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseJsonSchema: {
+  const { data } = await generateGeminiJson({
+    apiKey,
+    prompt: enrichedPrompt,
+    responseJsonSchema: {
+      type: "object",
+      properties: {
+        summary: { type: "string" },
+        suggestions: {
+          type: "array",
+          items: {
             type: "object",
             properties: {
-              summary: { type: "string" },
-              suggestions: {
+              companyName: { type: "string" },
+              websiteUrl: { type: ["string", "null"] },
+              careerPageUrl: { type: ["string", "null"] },
+              notes: { type: ["string", "null"] },
+              rationale: { type: "string" },
+              priority: { type: "number" },
+              tags: {
                 type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    companyName: { type: "string" },
-                    websiteUrl: { type: ["string", "null"] },
-                    careerPageUrl: { type: ["string", "null"] },
-                    notes: { type: ["string", "null"] },
-                    rationale: { type: "string" },
-                    priority: { type: "number" },
-                    tags: {
-                      type: "array",
-                      items: { type: "string" },
-                    },
-                    matchedSignals: {
-                      type: "array",
-                      items: { type: "string" },
-                    },
-                  },
-                  required: ["companyName", "rationale", "priority", "tags", "matchedSignals"],
-                },
+                items: { type: "string" },
+              },
+              matchedSignals: {
+                type: "array",
+                items: { type: "string" },
               },
             },
-            required: ["summary", "suggestions"],
+            required: ["companyName", "rationale", "priority", "tags", "matchedSignals"],
           },
         },
-      }),
+      },
+      required: ["summary", "suggestions"],
     },
-  );
+  });
 
-  if (!response.ok) {
-    throw new Error(`Gemini request failed with status ${response.status}`);
-  }
-
-  const payload = (await response.json()) as {
-    candidates?: Array<{
-      content?: {
-        parts?: Array<{
-          text?: string;
-        }>;
-      };
-    }>;
-  };
-  const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!text) {
-    throw new Error("Gemini returned no company targets payload");
-  }
-
-  const parsed = companyTargetSuggestionSchema.parse(JSON.parse(text));
+  const parsed = companyTargetSuggestionSchema.parse(data);
   const tracked = new Set(companyWatchlist.items.map((item) => item.normalizedName));
   const catalogIndex = new Map(
     companyCatalog.map((entry) => [normalizeCompanyName(entry.companyName), entry]),

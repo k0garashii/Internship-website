@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { startTransition, useState } from "react";
+import { startTransition, useRef, useState } from "react";
+
+import {
+  applyResumeSuggestions,
+  type ResumeProfileSuggestions,
+} from "@/lib/profile/resume-suggestions";
 
 type ProfileDraft = {
   headline: string;
@@ -28,12 +33,17 @@ type ProfileDraft = {
   preferredDomains: string;
   preferencesNotes: string;
   employmentTypes: string[];
+  languages: string;
+  hasDrivingLicense: string;
+  mobilityRadiusKm: string;
+  excludedSectors: string;
 };
 
 type Props = {
   initialFullName: string;
   initialEmail: string;
   initialProfile: ProfileDraft;
+  initialResumeFileName: string | null;
 };
 
 type SavedDraft = {
@@ -47,7 +57,7 @@ type NormalizedUrlFields = Pick<
 >;
 
 const experienceLevelOptions = [
-  { value: "", label: "A definir" },
+  { value: "", label: "À définir" },
   { value: "INTERN", label: "Stage" },
   { value: "ENTRY_LEVEL", label: "Debutant" },
   { value: "JUNIOR", label: "Junior" },
@@ -97,7 +107,7 @@ function fallbackPlaceholder(savedValue: string, defaultPlaceholder: string) {
 
 function formatDateLabel(value: string) {
   if (!value) {
-    return "Non renseignee";
+    return "Non renseignée";
   }
 
   const parsed = new Date(value);
@@ -110,7 +120,7 @@ function formatDateLabel(value: string) {
 }
 
 function formatListPreview(value: string) {
-  return value.trim() || "Aucune donnee sauvegardee";
+  return value.trim() || "Aucune donnée sauvegardée";
 }
 
 function SavedFieldHint({
@@ -122,7 +132,7 @@ function SavedFieldHint({
 }) {
   return (
     <p className="text-xs leading-6 text-muted">
-      {label} {value.trim() || "Non renseigne"}
+      {label} {value.trim() || "Non renseigné"}
     </p>
   );
 }
@@ -131,6 +141,7 @@ export function ProfileOnboardingForm({
   initialFullName,
   initialEmail,
   initialProfile,
+  initialResumeFileName,
 }: Props) {
   const router = useRouter();
   const [fullName, setFullName] = useState(initialFullName);
@@ -147,6 +158,11 @@ export function ProfileOnboardingForm({
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [resumeFileName, setResumeFileName] = useState(initialResumeFileName);
+  const [isImportingResume, setIsImportingResume] = useState(false);
+  const [resumeMessage, setResumeMessage] = useState<string | null>(null);
+  const [resumeError, setResumeError] = useState<string | null>(null);
+  const resumeInputRef = useRef<HTMLInputElement>(null);
   const currentProfileSnapshot = createProfileSnapshotKey(profile);
   const hasUnsavedChanges =
     fullName !== savedFullName || currentProfileSnapshot !== savedProfileSnapshot;
@@ -169,6 +185,64 @@ export function ProfileOnboardingForm({
         ? current.employmentTypes.filter((item) => item !== value)
         : [...current.employmentTypes, value],
     }));
+  }
+
+  async function handleResumeImport(file: File) {
+    setIsImportingResume(true);
+    setResumeError(null);
+    setResumeMessage(null);
+
+    const formData = new FormData();
+    formData.append("resume", file);
+
+    const response = await fetch("/api/profile/resume", {
+      method: "POST",
+      body: formData,
+    });
+    const payload = (await response.json().catch(() => ({}))) as {
+      error?: string;
+      fileName?: string;
+      suggestions?: ResumeProfileSuggestions;
+    };
+
+    setIsImportingResume(false);
+
+    if (resumeInputRef.current) {
+      resumeInputRef.current.value = "";
+    }
+
+    if (!response.ok || !payload.suggestions) {
+      setResumeError(payload.error ?? "Impossible d’importer le CV.");
+      return;
+    }
+
+    const { profile: nextProfile, filledFields } = applyResumeSuggestions(
+      profile,
+      payload.suggestions,
+    );
+
+    setProfile(nextProfile);
+    setResumeFileName(payload.fileName ?? file.name);
+    setResumeMessage(
+      filledFields.length > 0
+        ? `CV importé : ${filledFields.length} champ(s) complété(s). Vérifie-les puis enregistre le profil.`
+        : "CV importé. Aucun champ vide à compléter : ton profil reste inchangé.",
+    );
+  }
+
+  async function handleResumeDelete() {
+    setResumeError(null);
+    setResumeMessage(null);
+
+    const response = await fetch("/api/profile/resume", { method: "DELETE" });
+
+    if (!response.ok) {
+      setResumeError("Impossible de supprimer le CV.");
+      return;
+    }
+
+    setResumeFileName(null);
+    setResumeMessage("CV supprimé.");
   }
 
   async function handleSaveProfile(event: React.FormEvent<HTMLFormElement>) {
@@ -196,7 +270,7 @@ export function ProfileOnboardingForm({
     };
 
     if (!response.ok) {
-      setFormError(payload.error ?? "Impossible d enregistrer le profil");
+      setFormError(payload.error ?? "Impossible d’enregistrer le profil");
       setFieldErrors(payload.fieldErrors ?? {});
       setIsSubmitting(false);
       return;
@@ -237,11 +311,11 @@ export function ProfileOnboardingForm({
               Utilisation
             </p>
             <p className="text-sm leading-7 text-foreground">
-              Renseigne ici le profil, la fenetre de disponibilite et les contraintes de
-              candidature. Les listes acceptent des virgules ou des retours a la ligne.
+              Renseigne ici le profil, la fenêtre de disponibilité et les contraintes de
+              candidature. Les listes acceptent des virgules ou des retours à la ligne.
             </p>
             <p className="text-xs leading-6 text-muted">
-              Les champs vides reutilisent la derniere valeur sauvegardee comme repere
+              Les champs vides réutilisent la dernière valeur sauvegardée comme repère
               visuel.
             </p>
           </div>
@@ -253,11 +327,11 @@ export function ProfileOnboardingForm({
                   : "rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-900"
               }
             >
-            {hasUnsavedChanges ? "Modifications non sauvegardees" : "Profil a jour"}
+            {hasUnsavedChanges ? "Modifications non sauvegardées" : "Profil à jour"}
             </span>
             {savedAt ? (
               <span className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-900">
-                Sauvegarde {savedAt}
+                Sauvegardé {savedAt}
               </span>
             ) : null}
           </div>
@@ -267,7 +341,7 @@ export function ProfileOnboardingForm({
             role="alert"
             className="rounded-[1.25rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
           >
-            {fieldErrorCount} erreur{fieldErrorCount > 1 ? "s" : ""} de validation a
+            {fieldErrorCount} erreur{fieldErrorCount > 1 ? "s" : ""} de validation à
             corriger avant de continuer.
           </div>
         ) : null}
@@ -281,13 +355,77 @@ export function ProfileOnboardingForm({
         ) : null}
       </section>
 
+      <section className="space-y-4 rounded-[1.5rem] border border-line bg-white/70 p-5">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div className="space-y-2">
+            <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
+              Import du CV
+            </p>
+            <p className="text-sm leading-7 text-foreground">
+              Importe ton CV en PDF pour compléter automatiquement les champs vides :
+              compétences, formation, langues, postes visés. Rien n’est écrasé et rien
+              n’est enregistré tant que tu ne cliques pas sur « Enregistrer le profil ».
+            </p>
+            <p className="text-xs leading-6 text-muted">
+              {resumeFileName
+                ? `CV actuel : ${resumeFileName}. Il sert aussi à personnaliser tes brouillons.`
+                : "PDF de 4 Mo maximum, exporté depuis un traitement de texte (pas un scan)."}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <label className="inline-flex cursor-pointer items-center justify-center rounded-full bg-foreground px-5 py-3 text-sm font-medium text-white transition hover:-translate-y-0.5">
+              {isImportingResume ? "Analyse en cours..." : resumeFileName ? "Remplacer le CV" : "Importer mon CV"}
+              <input
+                ref={resumeInputRef}
+                type="file"
+                accept="application/pdf,.pdf"
+                className="sr-only"
+                disabled={isImportingResume}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+
+                  if (file) {
+                    void handleResumeImport(file);
+                  }
+                }}
+              />
+            </label>
+            {resumeFileName ? (
+              <button
+                type="button"
+                onClick={() => void handleResumeDelete()}
+                className="inline-flex items-center justify-center rounded-full border border-line px-5 py-3 text-sm font-medium text-foreground"
+              >
+                Supprimer le CV
+              </button>
+            ) : null}
+          </div>
+        </div>
+        {resumeMessage ? (
+          <div
+            aria-live="polite"
+            className="rounded-[1.25rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+          >
+            {resumeMessage}
+          </div>
+        ) : null}
+        {resumeError ? (
+          <div
+            role="alert"
+            className="rounded-[1.25rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+          >
+            {resumeError}
+          </div>
+        ) : null}
+      </section>
+
       <section className="space-y-4">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
             Informations de base
           </p>
           <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
-            Identite et positionnement
+            Identité et positionnement
           </h2>
         </div>
 
@@ -320,13 +458,13 @@ export function ProfileOnboardingForm({
               className="w-full rounded-2xl border border-line bg-white/80 px-4 py-3 outline-none transition focus:border-slate-900"
               placeholder={fallbackPlaceholder(
                 savedDraft.profile.headline,
-                "Etudiant ingenieur backend a la recherche d un stage",
+                "Étudiant ingénieur backend à la recherche d’un stage",
               )}
             />
             <FieldErrorList messages={fieldErrors.headline} />
           </label>
           <label className="space-y-2 md:col-span-2">
-            <span className="block text-sm font-medium text-foreground">Resume</span>
+            <span className="block text-sm font-medium text-foreground">Résumé</span>
             <textarea
               value={profile.summary}
               onChange={(event) => updateProfile("summary", event.target.value)}
@@ -345,16 +483,16 @@ export function ProfileOnboardingForm({
       <section className="space-y-4 border-t border-line pt-6">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-            Formation et disponibilite
+            Formation et disponibilité
           </p>
           <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
-            Cadre academique et calendrier
+            Cadre académique et calendrier
           </h2>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
           <label className="space-y-2">
-            <span className="block text-sm font-medium text-foreground">Ecole</span>
+            <span className="block text-sm font-medium text-foreground">École</span>
             <input
               value={profile.school}
               onChange={(event) => updateProfile("school", event.target.value)}
@@ -364,20 +502,20 @@ export function ProfileOnboardingForm({
             <FieldErrorList messages={fieldErrors.school} />
           </label>
           <label className="space-y-2">
-            <span className="block text-sm font-medium text-foreground">Diplome</span>
+            <span className="block text-sm font-medium text-foreground">Diplôme</span>
             <input
               value={profile.degree}
               onChange={(event) => updateProfile("degree", event.target.value)}
               className="w-full rounded-2xl border border-line bg-white/80 px-4 py-3 outline-none transition focus:border-slate-900"
               placeholder={fallbackPlaceholder(
                 savedDraft.profile.degree,
-                "Cycle ingenieur",
+                "Cycle ingénieur",
               )}
             />
             <FieldErrorList messages={fieldErrors.degree} />
           </label>
           <label className="space-y-2">
-            <span className="block text-sm font-medium text-foreground">Annee de fin</span>
+            <span className="block text-sm font-medium text-foreground">Année de fin</span>
             <input
               value={profile.graduationYear}
               onChange={(event) => updateProfile("graduationYear", event.target.value)}
@@ -402,7 +540,7 @@ export function ProfileOnboardingForm({
           </label>
           <label className="space-y-2">
             <span className="block text-sm font-medium text-foreground">
-              Disponibilite de debut
+              Disponibilité de début
             </span>
             <input
               type="date"
@@ -414,7 +552,7 @@ export function ProfileOnboardingForm({
           </label>
           <label className="space-y-2">
             <span className="block text-sm font-medium text-foreground">
-              Disponibilite de fin
+              Disponibilité de fin
             </span>
             <input
               type="date"
@@ -451,7 +589,7 @@ export function ProfileOnboardingForm({
       <section className="space-y-4 border-t border-line pt-6">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
-            Competences et cibles
+            Compétences et cibles
           </p>
           <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
             Signal pour le matching
@@ -460,7 +598,7 @@ export function ProfileOnboardingForm({
 
         <label className="space-y-2">
           <span className="block text-sm font-medium text-foreground">
-            Competences clefs
+            Compétences clefs
           </span>
           <textarea
             value={profile.skills}
@@ -477,7 +615,7 @@ export function ProfileOnboardingForm({
 
         <div className="grid gap-4 md:grid-cols-2">
           <label className="space-y-2">
-            <span className="block text-sm font-medium text-foreground">Roles cibles</span>
+            <span className="block text-sm font-medium text-foreground">Rôles cibles</span>
             <textarea
               value={profile.targetRoles}
               onChange={(event) => updateProfile("targetRoles", event.target.value)}
@@ -492,7 +630,7 @@ export function ProfileOnboardingForm({
           </label>
           <label className="space-y-2">
             <span className="block text-sm font-medium text-foreground">
-              Mots cles de recherche
+              Mots clés de recherche
             </span>
             <textarea
               value={profile.searchKeywords}
@@ -508,7 +646,7 @@ export function ProfileOnboardingForm({
           </label>
           <label className="space-y-2">
             <span className="block text-sm font-medium text-foreground">
-              Localisations preferees
+              Localisations préférées
             </span>
             <textarea
               value={profile.preferredLocations}
@@ -526,7 +664,7 @@ export function ProfileOnboardingForm({
           </label>
           <label className="space-y-2">
             <span className="block text-sm font-medium text-foreground">
-              Domaines a explorer
+              Domaines à explorer
             </span>
             <textarea
               value={profile.preferredDomains}
@@ -537,7 +675,7 @@ export function ProfileOnboardingForm({
               className="w-full rounded-[1.5rem] border border-line bg-white/80 px-4 py-3 outline-none transition focus:border-slate-900"
               placeholder={fallbackPlaceholder(
                 savedDraft.profile.preferredDomains,
-                "Deeptech, energie, outils developpeur...",
+                "Deeptech, énergie, outils développeur...",
               )}
             />
             <FieldErrorList messages={fieldErrors.preferredDomains} />
@@ -546,7 +684,7 @@ export function ProfileOnboardingForm({
 
         <div className="space-y-2">
           <span className="block text-sm font-medium text-foreground">
-            Types de contrat vises
+            Types de contrat visés
           </span>
           <div className="grid gap-3 md:grid-cols-2">
             {employmentTypeOptions.map((option) => (
@@ -564,6 +702,79 @@ export function ProfileOnboardingForm({
               </label>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="space-y-4 border-t border-line pt-6">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">
+            Mobilité et critères éliminatoires
+          </p>
+          <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
+            Ce qui écarte une offre d’office
+          </h2>
+          <p className="mt-2 text-sm leading-7 text-muted">
+            Les offres d’un secteur exclu, ou qui exigent le permis si tu ne l’as pas, ne
+            sont plus proposées.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="space-y-2">
+            <span className="block text-sm font-medium text-foreground">Langues parlées</span>
+            <input
+              value={profile.languages}
+              onChange={(event) => updateProfile("languages", event.target.value)}
+              className="w-full rounded-2xl border border-line bg-white/80 px-4 py-3 outline-none transition focus:border-slate-900"
+              placeholder={fallbackPlaceholder(
+                savedDraft.profile.languages,
+                "Français, Anglais (B2)",
+              )}
+            />
+            <FieldErrorList messages={fieldErrors.languages} />
+          </label>
+          <label className="space-y-2">
+            <span className="block text-sm font-medium text-foreground">
+              Rayon de mobilité (km)
+            </span>
+            <input
+              type="number"
+              min={0}
+              max={1000}
+              inputMode="numeric"
+              value={profile.mobilityRadiusKm}
+              onChange={(event) => updateProfile("mobilityRadiusKm", event.target.value)}
+              className="w-full rounded-2xl border border-line bg-white/80 px-4 py-3 outline-none transition focus:border-slate-900"
+              placeholder={fallbackPlaceholder(savedDraft.profile.mobilityRadiusKm, "30")}
+            />
+            <FieldErrorList messages={fieldErrors.mobilityRadiusKm} />
+          </label>
+          <label className="space-y-2">
+            <span className="block text-sm font-medium text-foreground">Permis de conduire</span>
+            <select
+              value={profile.hasDrivingLicense}
+              onChange={(event) => updateProfile("hasDrivingLicense", event.target.value)}
+              className="w-full rounded-2xl border border-line bg-white/80 px-4 py-3 outline-none transition focus:border-slate-900"
+            >
+              <option value="">Non précisé</option>
+              <option value="yes">Oui</option>
+              <option value="no">Non</option>
+            </select>
+            <FieldErrorList messages={fieldErrors.hasDrivingLicense} />
+          </label>
+          <label className="space-y-2">
+            <span className="block text-sm font-medium text-foreground">Secteurs exclus</span>
+            <input
+              value={profile.excludedSectors}
+              onChange={(event) => updateProfile("excludedSectors", event.target.value)}
+              className="w-full rounded-2xl border border-line bg-white/80 px-4 py-3 outline-none transition focus:border-slate-900"
+              placeholder={fallbackPlaceholder(
+                savedDraft.profile.excludedSectors,
+                "Défense, tabac, jeux d’argent",
+              )}
+            />
+            <FieldErrorList messages={fieldErrors.excludedSectors} />
+          </label>
         </div>
       </section>
 
@@ -631,7 +842,7 @@ export function ProfileOnboardingForm({
 
         <label className="space-y-2">
           <span className="block text-sm font-medium text-foreground">
-            Notes de preferences
+            Notes de préférences
           </span>
           <textarea
             value={profile.preferencesNotes}
@@ -640,7 +851,7 @@ export function ProfileOnboardingForm({
             className="w-full rounded-[1.5rem] border border-line bg-white/80 px-4 py-3 outline-none transition focus:border-slate-900"
             placeholder={fallbackPlaceholder(
               savedDraft.profile.preferencesNotes,
-              "Ex: equipe produit, stack TypeScript, pas de secteur defense...",
+              "Ex: équipe produit, stack TypeScript, pas de secteur défense...",
             )}
           />
           <FieldErrorList messages={fieldErrors.preferencesNotes} />
@@ -656,8 +867,8 @@ export function ProfileOnboardingForm({
             className="mt-1 h-4 w-4 rounded border-line"
           />
           <span className="text-sm leading-7 text-foreground">
-            J ai besoin d un sponsoring de visa ou d une prise en charge
-            administrative specifique.
+            J’ai besoin d’un sponsoring de visa ou d’une prise en charge
+            administrative spécifique.
           </span>
         </label>
       </section>
@@ -665,8 +876,8 @@ export function ProfileOnboardingForm({
       <div className="flex flex-col gap-4 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between">
         <div aria-live="polite" className="text-sm leading-7 text-muted">
           {savedAt
-            ? `Profil sauvegarde a ${savedAt}. Les donnees sont rechargees depuis la base.`
-            : "Ce formulaire structure et sauvegarde le profil en base pour les prochaines etapes de recherche."}
+            ? `Profil sauvegardé à ${savedAt}. Les données sont rechargées depuis la base.`
+            : "Ce formulaire structure et sauvegarde le profil en base pour les prochaines étapes de recherche."}
         </div>
         <div className="flex flex-col items-start gap-3 sm:items-end">
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -674,7 +885,7 @@ export function ProfileOnboardingForm({
               href="/workspace/preferences"
               className="inline-flex items-center justify-center rounded-full border border-line px-5 py-3 text-sm font-medium text-foreground transition-transform hover:-translate-y-0.5"
             >
-              Ouvrir les preferences
+              Ouvrir les préférences
             </Link>
             <button
               type="submit"

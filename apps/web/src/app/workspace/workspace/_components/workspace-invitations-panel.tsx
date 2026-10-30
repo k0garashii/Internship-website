@@ -128,8 +128,8 @@ export function WorkspaceInvitationsPanel({ viewerRole, invitations }: Props) {
         Inviter un membre sur le workspace
       </h2>
       <p className="mt-3 text-sm leading-7 text-muted">
-        L invitation genere un lien partageable. Le membre accepte ensuite en se
-        connectant avec l adresse mail invitee.
+        L’invitation génère un lien partageable. Le membre accepte ensuite en se
+        connectant avec l’adresse mail invitée.
       </p>
 
       <div className="mt-5 grid gap-3 md:grid-cols-[1fr_180px_auto]">
@@ -165,7 +165,7 @@ export function WorkspaceInvitationsPanel({ viewerRole, invitations }: Props) {
 
       {!manageable ? (
         <p className="mt-4 text-sm text-muted">
-          Seuls les owners et admins peuvent gerer les invitations.
+          Seuls les owners et admins peuvent gérer les invitations.
         </p>
       ) : null}
 
@@ -177,7 +177,7 @@ export function WorkspaceInvitationsPanel({ viewerRole, invitations }: Props) {
 
       {success ? (
         <p className="mt-4 text-sm text-emerald-700">
-          Lien d invitation: {success}
+          Lien d’invitation: {success}
         </p>
       ) : null}
 
@@ -211,7 +211,7 @@ export function WorkspaceInvitationsPanel({ viewerRole, invitations }: Props) {
                   onClick={() => handleRevoke(invitation.id)}
                   className="rounded-full border border-rose-200 px-4 py-2 text-sm text-rose-700"
                 >
-                  Revoquer
+                  Révoquer
                 </button>
               ) : null}
             </div>

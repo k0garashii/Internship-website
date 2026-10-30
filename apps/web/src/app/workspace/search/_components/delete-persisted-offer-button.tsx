@@ -31,7 +31,7 @@ export function DeletePersistedOfferButton({ offerId, offerTitle }: Props) {
     const payload = (await response.json()) as DeleteResponse;
 
     if (!response.ok) {
-      setError(payload.error ?? "Impossible de supprimer l offre");
+      setError(payload.error ?? "Impossible de supprimer l’offre");
       setIsDeleting(false);
       return;
     }
