@@ -1,6 +1,12 @@
-import { WorkspaceMemberRole, WorkspaceType } from "@prisma/client";
+import {
+  BillingProvider,
+  SubscriptionStatus,
+  WorkspaceMemberRole,
+  WorkspaceType,
+} from "@prisma/client";
 
 import { verifyPassword } from "@/lib/auth/password";
+import { cancelStripeSubscription, getStripeConfig } from "@/lib/billing/stripe";
 import { disconnectGmailConnection } from "@/lib/email/gmail-connection";
 import { logServiceError } from "@/lib/observability/error-logging";
 import { db } from "@/server/infrastructure/prisma/client";
@@ -156,6 +162,46 @@ export async function deleteAccount(userId: string, password: string) {
           409,
         );
       }
+    }
+  }
+
+  // A paid subscription must be stopped first: once the workspace is gone,
+  // nothing would let the user cancel it and Stripe would keep charging.
+  const paidSubscriptions = await db.workspaceSubscription.findMany({
+    where: {
+      workspaceId: { in: workspacesToDelete },
+      provider: BillingProvider.STRIPE,
+      status: { in: [SubscriptionStatus.TRIALING, SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE] },
+      externalSubscriptionId: { not: null },
+    },
+    select: { externalSubscriptionId: true },
+  });
+
+  if (paidSubscriptions.length > 0) {
+    const stripeConfig = getStripeConfig();
+
+    if (!stripeConfig) {
+      throw new AccountDeletionError(
+        "Résilie d’abord ton abonnement Pro depuis la page Abonnement.",
+        409,
+      );
+    }
+
+    try {
+      for (const subscription of paidSubscriptions) {
+        await cancelStripeSubscription(stripeConfig, subscription.externalSubscriptionId as string);
+      }
+    } catch (error) {
+      logServiceError({
+        scope: "account/delete",
+        message: "Stripe subscription cancellation failed during account deletion",
+        error,
+        metadata: { userId },
+      });
+      throw new AccountDeletionError(
+        "Impossible de résilier ton abonnement Pro pour le moment : réessaie dans quelques minutes.",
+        502,
+      );
     }
   }
 

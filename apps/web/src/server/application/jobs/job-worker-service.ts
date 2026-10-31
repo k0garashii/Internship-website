@@ -7,6 +7,7 @@ import { refreshProfileEnrichment } from "@/lib/profile/enrichment";
 import { discoverInitialOffers } from "@/lib/search/discovery";
 import { persistSearchDiscoveryResult } from "@/lib/search/persistence";
 import { getEffectiveInferredPreferences } from "@/server/application/personalization/profile-inference-service";
+import { resolveSearchSourceAccess } from "@/server/application/search/source-access";
 import {
   claimNextAppJob,
   completeAppJob,
@@ -53,10 +54,20 @@ async function processSearchDiscoveryJob(payload: unknown) {
     payload.userId,
     typeof payload.workspaceId === "string" ? payload.workspaceId : undefined,
   );
-  const result = await discoverInitialOffers({
-    ...config,
-    inferredPreferences,
-  });
+  const sourceAccess = await resolveSearchSourceAccess(
+    payload.userId,
+    typeof payload.workspaceId === "string" ? payload.workspaceId : null,
+  );
+  const result = await discoverInitialOffers(
+    {
+      ...config,
+      inferredPreferences,
+    },
+    {
+      includeLinkedInDirect: sourceAccess.linkedInDirect,
+      includeExtendedSources: sourceAccess.extendedSources,
+    },
+  );
   const persistence = await persistSearchDiscoveryResult(viewer, result);
 
   return {

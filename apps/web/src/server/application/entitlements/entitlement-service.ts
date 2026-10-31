@@ -1,8 +1,17 @@
-import { EntitlementSource, WorkspaceFeature, type WorkspaceMemberRole } from "@prisma/client";
+import {
+  BillingProvider,
+  EntitlementSource,
+  SubscriptionStatus,
+  WorkspaceFeature,
+  WorkspaceMemberRole,
+} from "@prisma/client";
+
+import { isDeveloperEmail } from "@/lib/auth/developers";
 
 import { getFeatureAccessErrorMessage } from "@/server/domain/authz/permissions";
 import {
   getDefaultPlanDefinition,
+  getPlanDefinition,
   normalizePlanFeatureMatrix,
   type PlanFeatureConfig,
 } from "@/server/domain/billing/plan-catalog";
@@ -38,13 +47,20 @@ function buildDefaultAccessMap(): Record<WorkspaceFeature, WorkspaceFeatureAcces
   return result;
 }
 
+// A paid subscription stays usable while Stripe retries a failed payment.
+const ACCESS_GRANTING_STATUSES: SubscriptionStatus[] = [
+  SubscriptionStatus.TRIALING,
+  SubscriptionStatus.ACTIVE,
+  SubscriptionStatus.PAST_DUE,
+];
+
 export async function resolveWorkspaceEntitlements(workspaceId: string) {
-  const [subscription, overrides] = await Promise.all([
-    db.workspaceSubscription.findFirst({
+  const [subscriptions, overrides, owners] = await Promise.all([
+    db.workspaceSubscription.findMany({
       where: {
         workspaceId,
         status: {
-          in: ["TRIALING", "ACTIVE"],
+          in: ACCESS_GRANTING_STATUSES,
         },
       },
       orderBy: {
@@ -65,9 +81,29 @@ export async function resolveWorkspaceEntitlements(workspaceId: string) {
         workspaceId,
       },
     }),
+    db.workspaceMember.findMany({
+      where: { workspaceId, role: WorkspaceMemberRole.OWNER },
+      select: { user: { select: { email: true } } },
+    }),
   ]);
 
-  const planMatrix = normalizePlanFeatureMatrix(subscription?.plan.featureMatrix);
+  // The internal free subscription stays active underneath a paid one, so a
+  // paid plan wins whenever one is current.
+  const subscription =
+    subscriptions.find((candidate) => candidate.provider !== BillingProvider.INTERNAL) ??
+    subscriptions.find((candidate) => candidate.status !== SubscriptionStatus.PAST_DUE) ??
+    null;
+  const isDeveloperWorkspace = owners.some((owner) => isDeveloperEmail(owner.user.email));
+  const proPlan = getPlanDefinition("PRO");
+  // The catalog in code is the source of truth; the JSON copied on the plan
+  // row is only a fallback for plans that no longer exist in the catalog.
+  const plan =
+    isDeveloperWorkspace && proPlan
+      ? proPlan
+      : (getPlanDefinition(subscription?.plan.code) ?? null);
+  const planMatrix = plan
+    ? plan.featureMatrix
+    : normalizePlanFeatureMatrix(subscription?.plan.featureMatrix);
   const merged = buildDefaultAccessMap();
 
   for (const feature of Object.values(WorkspaceFeature)) {
@@ -88,8 +124,19 @@ export async function resolveWorkspaceEntitlements(workspaceId: string) {
 
   return {
     workspaceId,
-    planCode: subscription?.plan.code ?? getDefaultPlanDefinition().code,
-    planName: subscription?.plan.name ?? getDefaultPlanDefinition().name,
+    planCode: plan?.code ?? subscription?.plan.code ?? getDefaultPlanDefinition().code,
+    planName: isDeveloperWorkspace
+      ? "Pro (développeur)"
+      : (plan?.name ?? subscription?.plan.name ?? getDefaultPlanDefinition().name),
+    isDeveloperWorkspace,
+    subscription: subscription
+      ? {
+          provider: subscription.provider,
+          status: subscription.status,
+          currentPeriodEnd: subscription.currentPeriodEnd,
+          cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+        }
+      : null,
     features: merged,
   };
 }

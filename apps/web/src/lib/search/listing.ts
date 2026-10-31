@@ -192,6 +192,9 @@ export async function listPersistedOffersForUser(
   const offers = await db.jobOffer.findMany({
     where: {
       userId,
+      // Offers detected as no longer online stay visible in the applications
+      // board and on their detail page, but leave the collected offers list.
+      expiredAt: null,
     },
     orderBy: [
       {
@@ -314,6 +317,7 @@ export async function getPersistedOfferDetailForUser(
       postedAt: true,
       firstSeenAt: true,
       lastSeenAt: true,
+      expiredAt: true,
       description: true,
       rawPayload: true,
       searchMatches: {
@@ -397,6 +401,7 @@ export async function getPersistedOfferDetailForUser(
       postedAt: toIsoString(offer.postedAt),
       firstSeenAt: offer.firstSeenAt.toISOString(),
       lastSeenAt: offer.lastSeenAt.toISOString(),
+      expiredAt: offer.expiredAt?.toISOString() ?? null,
       description: offer.description,
       latestMatchScore:
         typeof latestMatch?.rawScore === "number" ? Math.round(latestMatch.rawScore) : null,

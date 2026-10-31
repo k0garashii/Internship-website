@@ -9,10 +9,14 @@ import { findOfferExclusionReason, matchProfileToOffer } from "@/lib/search/matc
 import { normalizeDiscoveryOffers } from "@/lib/search/normalization";
 import {
   buildLinkedInSearchContext,
-  isLinkedInDirectSourceEnabled,
   matchLinkedInQueryKeywords,
   searchLinkedInOffers,
 } from "@/lib/search/providers/linkedin";
+import {
+  type FranceTravailHit,
+  getFranceTravailConfig,
+  searchFranceTravailOffers,
+} from "@/lib/search/providers/france-travail";
 import {
   buildWttjSearchContext,
   formatWttjLocation,
@@ -51,6 +55,8 @@ type DiscoveryConfig = {
 };
 
 type DiscoveryOptions = {
+  includeLinkedInDirect?: boolean;
+  includeExtendedSources?: boolean;
   queryLimit?: number;
   hitsPerQuery?: number;
   maxOffers?: number;
@@ -241,6 +247,54 @@ function createLinkedInDiscoveryOffer(
     sourceUrl: hit.sourceUrl,
     summary: hit.benefitsText,
     profileSnippet: null,
+    matchedQueryIds: [query.id],
+    matchedQueryLabels: [query.label],
+    matchedKeywords,
+    priorityScore: query.priority,
+    relevanceScore: scoring.score,
+    relevanceLabel: scoring.label,
+    matching: {
+      score: 18,
+      label: "Exploratoire",
+      summary: "Match non calculé.",
+      breakdown: [],
+    },
+  };
+}
+
+function createFranceTravailDiscoveryOffer(
+  query: SearchQueryCandidate,
+  hit: FranceTravailHit,
+): SearchDiscoveryOffer {
+  const searchableText = [hit.title, hit.companyName, hit.description].filter(Boolean).join(" ").toLowerCase();
+  const matchedKeywords = query.keywords.filter((keyword) =>
+    searchableText.includes(keyword.toLowerCase()),
+  );
+  const scoring = scoreDiscoveryOffer({
+    contractType: hit.contractType,
+    matchedKeywords,
+    matchedQueryIds: [query.id],
+    profileSnippet: null,
+    publishedAt: hit.publishedAt,
+    summary: hit.description,
+  });
+
+  return {
+    id: `france-travail:${hit.id}`,
+    provider: "france-travail",
+    sourceKind: "JOB_BOARD",
+    sourceSite: "France Travail",
+    title: hit.title,
+    companyName: hit.companyName,
+    companySlug: null,
+    locationLabel: hit.locationLabel,
+    countryCode: "FR",
+    contractType: hit.contractType,
+    remoteMode: null,
+    publishedAt: hit.publishedAt,
+    sourceUrl: hit.sourceUrl,
+    summary: hit.description,
+    profileSnippet: hit.salaryLabel,
     matchedQueryIds: [query.id],
     matchedQueryLabels: [query.label],
     matchedKeywords,
@@ -495,12 +549,19 @@ export async function discoverInitialOffers(
   const offerMap = new Map<string, SearchDiscoveryOffer>();
 
   // Sources are independent, so they are queried concurrently; results are
-  // still merged in a fixed order (WTTJ, LinkedIn, web) to keep ranking stable.
-  const [settledWttjResults, settledLinkedInResults, settledWebResults] = await Promise.all([
+  // still merged in a fixed order (WTTJ, LinkedIn, web, France Travail) to
+  // keep ranking stable.
+  const franceTravailConfig = getFranceTravailConfig();
+  const [
+    settledWttjResults,
+    settledLinkedInResults,
+    settledWebResults,
+    settledFranceTravailResults,
+  ] = await Promise.all([
     Promise.allSettled(
       selectedQueries.map((query) => searchQueryWithFallback(query, wttjContext, hitsPerQuery)),
     ),
-    isLinkedInDirectSourceEnabled()
+    options.includeLinkedInDirect
       ? Promise.allSettled(
           selectedQueries.map((query) => searchLinkedInOffers(query, linkedInContext)),
         )
@@ -508,7 +569,15 @@ export async function discoverInitialOffers(
     Promise.allSettled(
       selectedQueries.map((query) => searchWebOffersForQuery(query, webContext)),
     ),
+    options.includeExtendedSources && franceTravailConfig
+      ? Promise.allSettled(
+          selectedQueries.map((query) =>
+            searchFranceTravailOffers(franceTravailConfig, query, hitsPerQuery),
+          ),
+        )
+      : Promise.resolve([]),
   ]);
+
 
   settledWttjResults.forEach((result, index) => {
     const query = selectedQueries[index];
@@ -585,6 +654,37 @@ export async function discoverInitialOffers(
     });
     warnings.push(...result.value.warnings);
     result.value.offers.forEach((incoming) => {
+      offerMap.set(incoming.id, mergeOffer(offerMap.get(incoming.id), incoming));
+    });
+  });
+
+  settledFranceTravailResults.forEach((result, index) => {
+    const query = selectedQueries[index];
+
+    if (result.status === "rejected") {
+      warnings.push(`La requête "${query.label}" a échoué sur France Travail.`);
+      return;
+    }
+
+    executions.push({
+      id: `${query.id}:france-travail`,
+      label: `${query.label} / France Travail`,
+      targetRole: query.targetRole,
+      domain: query.domain,
+      location: query.location,
+      focusKeywords: query.focusKeywords,
+      queryText: query.targetRole,
+      requestedQueryText: query.queryText,
+      provider: "france-travail",
+      providerLabel: "France Travail",
+      language: "fr",
+      filters: result.value.departmentCode ? [`département ${result.value.departmentCode}`] : [],
+      totalHits: result.value.hits.length,
+      returnedHits: result.value.hits.length,
+    });
+
+    result.value.hits.forEach((hit) => {
+      const incoming = createFranceTravailDiscoveryOffer(query, hit);
       offerMap.set(incoming.id, mergeOffer(offerMap.get(incoming.id), incoming));
     });
   });

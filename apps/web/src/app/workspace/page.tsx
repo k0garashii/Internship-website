@@ -3,7 +3,10 @@ import Link from "next/link";
 
 import { getCurrentViewer } from "@/lib/auth/session";
 import { db } from "@/lib/db";
+import { getTodaySummaryForUser } from "@/lib/dashboard/today";
 import { getGmailConnectionSnapshot } from "@/lib/email/gmail-connection";
+
+import { TodayPanel } from "./_components/today-panel";
 
 function getGmailBanner(status: string | undefined) {
   switch (status) {
@@ -55,7 +58,7 @@ export default async function WorkspacePage({
     redirect("/sign-in");
   }
 
-  const [account, gmailSnapshot, resolvedSearchParams] = await Promise.all([
+  const [account, gmailSnapshot, resolvedSearchParams, todaySummary] = await Promise.all([
     db.user.findUnique({
       where: {
         id: viewer.userId,
@@ -80,6 +83,7 @@ export default async function WorkspacePage({
     }),
     getGmailConnectionSnapshot(viewer.userId),
     searchParams ?? Promise.resolve({} as Record<string, string | string[] | undefined>),
+    getTodaySummaryForUser(viewer.userId),
   ]);
 
   if (!account) {
@@ -116,6 +120,8 @@ export default async function WorkspacePage({
           <div className="status-pill status-pill-success">Emails + brouillons</div>
         </div>
       </section>
+
+      <TodayPanel summary={todaySummary} />
 
       {gmailBanner ? (
         <section

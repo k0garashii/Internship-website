@@ -61,6 +61,8 @@ enum WorkspaceFeature {
   COMPANY_TARGETING
   PROFILE_ENRICHMENT
   API_ACCESS
+  AI_GENERATION
+  EXTENDED_SOURCES
 }
 
 enum EntitlementSource {
@@ -338,8 +340,10 @@ model Workspace {
   defaultLocale           String                       @default("fr-FR")
   defaultTimezone         String                       @default("Europe/Paris")
   isArchived              Boolean                      @default(false)
+  stripeCustomerId        String?                      @unique
   createdAt               DateTime                     @default(now())
   updatedAt               DateTime                     @updatedAt
+  featureUsage            FeatureUsage[]
   createdBy               User?                        @relation("WorkspaceCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   activeForUsers          User[]                       @relation("UserActiveWorkspace")
   members                 WorkspaceMember[]
@@ -432,7 +436,7 @@ model WorkspaceSubscription {
   planId                 String
   provider               BillingProvider    @default(INTERNAL)
   status                 SubscriptionStatus @default(ACTIVE)
-  externalSubscriptionId String?
+  externalSubscriptionId String?            @unique
   seats                  Int                @default(1)
   currentPeriodStart     DateTime?
   currentPeriodEnd       DateTime?
@@ -516,6 +520,19 @@ model AuthSession {
 
   @@index([userId, expiresAt])
   @@index([expiresAt])
+}
+
+// Monthly usage of quota-limited features (e.g. AI generations), per workspace.
+model FeatureUsage {
+  id          String           @id @default(cuid())
+  workspaceId String
+  feature     WorkspaceFeature
+  periodStart DateTime
+  count       Int              @default(0)
+  updatedAt   DateTime         @updatedAt
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, feature, periodStart])
 }
 
 model RateLimitBucket {
@@ -721,6 +738,8 @@ model JobOffer {
   firstSeenAt           DateTime              @default(now())
   lastSeenAt            DateTime              @default(now())
   nextFollowUpAt        DateTime?
+  appliedAt             DateTime?
+  respondedAt           DateTime?
   interviewAt           DateTime?
   expiredAt             DateTime?
   availabilityCheckedAt DateTime?

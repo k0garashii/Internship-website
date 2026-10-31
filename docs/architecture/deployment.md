@@ -20,6 +20,17 @@ La liste complete et commentee est dans `apps/web/.env.example`.
 - `CRON_SECRET`: secret aleatoire (`openssl rand -hex 32`) qui protege `/api/cron/maintenance`. Vercel l envoie automatiquement a la tache planifiee quotidienne declaree dans `apps/web/vercel.json`. Sans lui, recherche quotidienne, verification des offres et recapitulatifs sont desactives.
 - `RESEND_API_KEY`, `EMAIL_FROM`: optionnels. Sans eux, le recapitulatif part du Gmail de l utilisateur vers lui-meme (permission d envoi Gmail requise).
 
+## Abonnement Pro (Stripe)
+
+L offre Pro (4,99 EUR/mois) leve la limite de 10 generations IA par mois et active les sources officielles (France Travail). Les comptes listes dans `DEVELOPER_EMAILS` ont le Pro sans payer, ainsi que la source LinkedIn directe.
+
+1. Creer un produit "Pro" avec un prix recurrent mensuel de 4,99 EUR dans le dashboard Stripe (mode test d abord) et copier l identifiant `price_...` dans `STRIPE_PRICE_PRO_MONTHLY`.
+2. Copier la cle secrete dans `STRIPE_SECRET_KEY`.
+3. Ajouter un endpoint de webhook vers `https://<domaine>/api/billing/stripe/webhook` avec les evenements `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, puis copier son secret de signature dans `STRIPE_WEBHOOK_SECRET`.
+4. Activer le portail client (Settings, Billing, Customer portal) pour permettre la resiliation et le changement de carte.
+
+Les droits sont lus depuis le catalogue dans le code (`plan-catalog.ts`) ; le webhook relit toujours l abonnement chez Stripe avant de l enregistrer. La suppression d un compte resilie son abonnement Stripe.
+
 ## Taches planifiees
 
 `/api/cron/maintenance` traite une tranche de travail par appel (60 s maximum) : jobs en attente, recherche quotidienne par utilisateur, verification des offres suivies, recapitulatifs. Vercel l appelle une fois par jour (limite du plan Hobby). Pour etaler le travail sur la journee, le workflow GitHub `scheduled-maintenance.yml` l appelle toutes les 30 minutes une fois les secrets de depot `APP_URL` et `CRON_SECRET` renseignes (Settings, Secrets and variables, Actions).

@@ -185,6 +185,7 @@ export type PersistedOfferDetailResult = {
     postedAt: string | null;
     firstSeenAt: string;
     lastSeenAt: string;
+    expiredAt: string | null;
     description: string | null;
     latestMatchScore: number | null;
     latestMatchLabel: OfferProfileMatch["label"] | null;

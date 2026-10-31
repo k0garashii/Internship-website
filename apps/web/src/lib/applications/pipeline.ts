@@ -20,6 +20,8 @@ export const APPLICATION_STAGES = [
 export type ApplicationStage = (typeof APPLICATION_STAGES)[number];
 
 export const DEFAULT_FOLLOW_UP_DELAY_DAYS = 10;
+const SUBMITTED_STAGES: ApplicationStage[] = ["APPLIED", "INTERVIEWING", "OFFER_ACCEPTED", "REJECTED"];
+const ANSWERED_STAGES: ApplicationStage[] = ["INTERVIEWING", "OFFER_ACCEPTED", "REJECTED"];
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const STAGE_EVENT_TYPES: Partial<Record<ApplicationStage, SearchBehaviorEventType>> = {
@@ -101,6 +103,23 @@ export function resolveFollowUpDate(options: {
   }
 
   return options.current;
+}
+
+// Keeps the first time an application was sent and answered, so statistics
+// can measure response rates and delays. Moving a card back clears them.
+export function resolveStageTimestamps(options: {
+  stage: ApplicationStage;
+  appliedAt: Date | null;
+  respondedAt: Date | null;
+  now: Date;
+}) {
+  const isSubmitted = SUBMITTED_STAGES.includes(options.stage);
+  const isAnswered = ANSWERED_STAGES.includes(options.stage);
+
+  return {
+    appliedAt: isSubmitted ? (options.appliedAt ?? options.now) : null,
+    respondedAt: isAnswered ? (options.respondedAt ?? options.now) : null,
+  };
 }
 
 export async function listApplicationsForUser(userId: string): Promise<ApplicationCard[]> {
@@ -187,6 +206,8 @@ export async function updateApplicationForUser(
       sourceUrl: true,
       rawPayload: true,
       nextFollowUpAt: true,
+      appliedAt: true,
+      respondedAt: true,
     },
   });
 
@@ -227,6 +248,14 @@ export async function updateApplicationForUser(
       where: { id: offerId },
       data: {
         nextFollowUpAt,
+        ...(stage
+          ? resolveStageTimestamps({
+              stage,
+              appliedAt: offer.appliedAt,
+              respondedAt: offer.respondedAt,
+              now: new Date(),
+            })
+          : {}),
         ...(interviewAt !== undefined ? { interviewAt } : {}),
         ...(stage === "FAVORITE" ? { status: OfferLifecycleStatus.SHORTLISTED } : {}),
         ...(stage && stage !== "FAVORITE" ? { status: OfferLifecycleStatus.APPLIED } : {}),

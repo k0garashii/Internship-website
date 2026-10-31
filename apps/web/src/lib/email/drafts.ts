@@ -1,6 +1,7 @@
 import {
   DraftKind,
   DraftStatus,
+  WorkspaceFeature,
   EmailDeliveryOperation,
   EmailDeliveryLogStatus,
 } from "@prisma/client";
@@ -27,6 +28,7 @@ import {
 } from "@/lib/email/personalization-prompt";
 import { logServiceError } from "@/lib/observability/error-logging";
 import { buildSignalsFromOfferRecord, recordSearchBehaviorEvent } from "@/server/application/personalization/search-behavior-service";
+import { consumeFeatureQuota } from "@/server/application/entitlements/feature-usage-service";
 import { getRequiredActiveWorkspaceIdForUser } from "@/server/application/workspace/workspace-service";
 
 const generatedDraftSchema = z.object({
@@ -414,6 +416,17 @@ export async function generateOfferEmailDraft(
   const context = await buildOfferGeminiContext(userId, jobOfferId);
   const prompt = buildOfferEmailPersonalizationPrompt(context, kind);
   const apiKey = getGeminiApiKey();
+
+  if (apiKey) {
+    const quota = await consumeFeatureQuota(workspaceId, WorkspaceFeature.AI_GENERATION);
+
+    if (!quota.allowed) {
+      throw new OfferEmailDraftError(
+        `Tu as utilisé tes ${quota.limit ?? 0} générations IA gratuites ce mois-ci. Passe à l’offre Pro pour des générations illimitées.`,
+        402,
+      );
+    }
+  }
 
   let generatedBy = "fallback-template";
   let provider: GeneratedEmailDraft["provider"] = "fallback";

@@ -202,6 +202,7 @@ export function ProfileOnboardingForm({
     const payload = (await response.json().catch(() => ({}))) as {
       error?: string;
       fileName?: string;
+      aiQuotaExceeded?: boolean;
       suggestions?: ResumeProfileSuggestions;
     };
 
@@ -224,9 +225,16 @@ export function ProfileOnboardingForm({
     setProfile(nextProfile);
     setResumeFileName(payload.fileName ?? file.name);
     setResumeMessage(
-      filledFields.length > 0
-        ? `CV importé : ${filledFields.length} champ(s) complété(s). Vérifie-les puis enregistre le profil.`
-        : "CV importé. Aucun champ vide à compléter : ton profil reste inchangé.",
+      [
+        filledFields.length > 0
+          ? `CV importé : ${filledFields.length} champ(s) complété(s). Vérifie-les puis enregistre le profil.`
+          : "CV importé. Aucun champ vide à compléter : ton profil reste inchangé.",
+        payload.aiQuotaExceeded
+          ? "Quota IA du mois atteint : seule l’extraction simple a été utilisée. L’offre Pro lève cette limite."
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" "),
     );
   }
 

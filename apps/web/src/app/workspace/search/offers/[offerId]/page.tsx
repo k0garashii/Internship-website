@@ -207,6 +207,11 @@ export default async function OfferDetailPage({ params }: PageProps) {
                     {feedbackLabels[offer.latestFeedbackDecision] ?? offer.latestFeedbackDecision}
                   </span>
                 ) : null}
+                {offer.expiredAt ? (
+                  <span className="rounded-full border border-slate-300 bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                    Offre expirée : elle n’est plus en ligne
+                  </span>
+                ) : null}
               </div>
               <div>
                 <p className="font-mono text-xs uppercase tracking-[0.22em] text-muted">

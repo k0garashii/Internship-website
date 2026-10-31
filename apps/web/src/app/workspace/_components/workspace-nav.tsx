@@ -32,6 +32,12 @@ const primaryItems: NavItem[] = [
     shortLabel: "GP",
   },
   {
+    href: "/workspace/billing",
+    label: "Abonnement",
+    description: "Offre, quota IA et factures",
+    shortLabel: "AB",
+  },
+  {
     href: "/workspace/workspace",
     label: "Workspace",
     description: "Espace, membres et connexions",
@@ -60,6 +66,12 @@ const secondaryGroups = [
         label: "Candidatures",
         description: "Suivi, relances et entretiens",
         shortLabel: "CA",
+      },
+      {
+        href: "/workspace/stats",
+        label: "Statistiques",
+        description: "Taux de réponse et sources",
+        shortLabel: "ST",
       },
       {
         href: "/workspace/drafts",
