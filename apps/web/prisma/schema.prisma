@@ -721,6 +721,8 @@ model JobOffer {
   firstSeenAt           DateTime              @default(now())
   lastSeenAt            DateTime              @default(now())
   nextFollowUpAt        DateTime?
+  appliedAt             DateTime?
+  respondedAt           DateTime?
   interviewAt           DateTime?
   expiredAt             DateTime?
   availabilityCheckedAt DateTime?

@@ -9,7 +9,6 @@ import { findOfferExclusionReason, matchProfileToOffer } from "@/lib/search/matc
 import { normalizeDiscoveryOffers } from "@/lib/search/normalization";
 import {
   buildLinkedInSearchContext,
-  isLinkedInDirectSourceEnabled,
   matchLinkedInQueryKeywords,
   searchLinkedInOffers,
 } from "@/lib/search/providers/linkedin";
@@ -51,6 +50,7 @@ type DiscoveryConfig = {
 };
 
 type DiscoveryOptions = {
+  includeLinkedInDirect?: boolean;
   queryLimit?: number;
   hitsPerQuery?: number;
   maxOffers?: number;
@@ -500,7 +500,7 @@ export async function discoverInitialOffers(
     Promise.allSettled(
       selectedQueries.map((query) => searchQueryWithFallback(query, wttjContext, hitsPerQuery)),
     ),
-    isLinkedInDirectSourceEnabled()
+    options.includeLinkedInDirect
       ? Promise.allSettled(
           selectedQueries.map((query) => searchLinkedInOffers(query, linkedInContext)),
         )
