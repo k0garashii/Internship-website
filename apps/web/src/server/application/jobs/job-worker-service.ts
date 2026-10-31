@@ -54,13 +54,19 @@ async function processSearchDiscoveryJob(payload: unknown) {
     payload.userId,
     typeof payload.workspaceId === "string" ? payload.workspaceId : undefined,
   );
-  const sourceAccess = await resolveSearchSourceAccess(payload.userId);
+  const sourceAccess = await resolveSearchSourceAccess(
+    payload.userId,
+    typeof payload.workspaceId === "string" ? payload.workspaceId : null,
+  );
   const result = await discoverInitialOffers(
     {
       ...config,
       inferredPreferences,
     },
-    { includeLinkedInDirect: sourceAccess.linkedInDirect },
+    {
+      includeLinkedInDirect: sourceAccess.linkedInDirect,
+      includeExtendedSources: sourceAccess.extendedSources,
+    },
   );
   const persistence = await persistSearchDiscoveryResult(viewer, result);
 

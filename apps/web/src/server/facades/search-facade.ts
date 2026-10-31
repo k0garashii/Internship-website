@@ -22,13 +22,19 @@ export async function runSearchDiscovery(viewer: AuthenticatedViewer) {
     workspaceViewer.userId,
     workspaceViewer.workspaceId,
   );
-  const sourceAccess = await resolveSearchSourceAccess(workspaceViewer.userId);
+  const sourceAccess = await resolveSearchSourceAccess(
+    workspaceViewer.userId,
+    workspaceViewer.workspaceId,
+  );
   const result = await discoverInitialOffers(
     {
       ...config,
       inferredPreferences,
     },
-    { includeLinkedInDirect: sourceAccess.linkedInDirect },
+    {
+      includeLinkedInDirect: sourceAccess.linkedInDirect,
+      includeExtendedSources: sourceAccess.extendedSources,
+    },
   );
   const persistence = await persistSearchDiscoveryResult(workspaceViewer, result);
 

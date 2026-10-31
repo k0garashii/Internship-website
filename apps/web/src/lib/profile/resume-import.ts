@@ -1,3 +1,4 @@
+import { WorkspaceFeature } from "@prisma/client";
 import { z } from "zod";
 
 import { generateGeminiJson, getGeminiApiKey } from "@/lib/ai/gemini";
@@ -5,6 +6,7 @@ import { db } from "@/lib/db";
 import { logServiceError } from "@/lib/observability/error-logging";
 import { inferSignalsFromText, parsePdfText } from "@/lib/profile/enrichment";
 import type { ResumeProfileSuggestions } from "@/lib/profile/resume-suggestions";
+import { consumeFeatureQuota } from "@/server/application/entitlements/feature-usage-service";
 import { getRequiredActiveWorkspaceIdForUser } from "@/server/application/workspace/workspace-service";
 
 // Vercel rejects request bodies above 4.5 MB.
@@ -178,8 +180,17 @@ export async function importResumeForUser(userId: string, file: File) {
   let suggestions = extractResumeSuggestionsWithoutAi(text);
   let provider: "gemini" | "fallback" = "fallback";
   const apiKey = getGeminiApiKey();
+  let aiQuotaExceeded = false;
 
   if (apiKey) {
+    const quota = await consumeFeatureQuota(
+      await getRequiredActiveWorkspaceIdForUser(userId),
+      WorkspaceFeature.AI_GENERATION,
+    );
+    aiQuotaExceeded = !quota.allowed;
+  }
+
+  if (apiKey && !aiQuotaExceeded) {
     try {
       suggestions = await extractResumeSuggestionsWithGemini(text, apiKey);
       provider = "gemini";
@@ -198,6 +209,7 @@ export async function importResumeForUser(userId: string, file: File) {
     fileName,
     uploadedAt: now.toISOString(),
     provider,
+    aiQuotaExceeded,
     suggestions,
   };
 }

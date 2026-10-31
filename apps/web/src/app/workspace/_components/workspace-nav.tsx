@@ -32,6 +32,12 @@ const primaryItems: NavItem[] = [
     shortLabel: "GP",
   },
   {
+    href: "/workspace/billing",
+    label: "Abonnement",
+    description: "Offre, quota IA et factures",
+    shortLabel: "AB",
+  },
+  {
     href: "/workspace/workspace",
     label: "Workspace",
     description: "Espace, membres et connexions",

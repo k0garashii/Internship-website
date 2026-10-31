@@ -18,6 +18,8 @@ export type PlanCatalogEntry = {
   featureMatrix: PlanFeatureMatrix;
 };
 
+export const FREE_MONTHLY_AI_GENERATIONS = 10;
+
 const freeMatrix: PlanFeatureMatrix = {
   [WorkspaceFeature.SEARCH_DISCOVERY]: {
     enabled: true,
@@ -46,6 +48,15 @@ const freeMatrix: PlanFeatureMatrix = {
   [WorkspaceFeature.API_ACCESS]: {
     enabled: false,
     limitValue: 0,
+  },
+  // Monthly AI generations (drafts, follow-ups, cover letters, resume import).
+  [WorkspaceFeature.AI_GENERATION]: {
+    enabled: true,
+    limitValue: FREE_MONTHLY_AI_GENERATIONS,
+  },
+  [WorkspaceFeature.EXTENDED_SOURCES]: {
+    enabled: false,
+    limitValue: null,
   },
 };
 
@@ -78,12 +89,20 @@ const proMatrix: PlanFeatureMatrix = {
     enabled: true,
     limitValue: 10000,
   },
+  [WorkspaceFeature.AI_GENERATION]: {
+    enabled: true,
+    limitValue: null,
+  },
+  [WorkspaceFeature.EXTENDED_SOURCES]: {
+    enabled: true,
+    limitValue: null,
+  },
 };
 
 export const PLAN_CATALOG: PlanCatalogEntry[] = [
   {
     code: "FREE",
-    name: "Free",
+    name: "Gratuite",
     provider: BillingProvider.INTERNAL,
     billingInterval: BillingInterval.MONTHLY,
     priceCents: 0,
@@ -94,14 +113,18 @@ export const PLAN_CATALOG: PlanCatalogEntry[] = [
   {
     code: "PRO",
     name: "Pro",
-    provider: BillingProvider.INTERNAL,
+    provider: BillingProvider.STRIPE,
     billingInterval: BillingInterval.MONTHLY,
-    priceCents: 1900,
+    priceCents: 499,
     currency: "EUR",
     isDefault: false,
     featureMatrix: proMatrix,
   },
 ];
+
+export function getPlanDefinition(code: string | null | undefined) {
+  return PLAN_CATALOG.find((plan) => plan.code === code) ?? null;
+}
 
 export function getDefaultPlanDefinition() {
   return PLAN_CATALOG.find((plan) => plan.isDefault) ?? PLAN_CATALOG[0];
